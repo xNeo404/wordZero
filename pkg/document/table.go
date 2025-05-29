@@ -1859,12 +1859,12 @@ const (
 	BorderStyleInset                  BorderStyle = "inset"                  // 内凹
 )
 
-// ShadingPattern 底纹图案常量
+// ShadingPattern 底纹图案类型
 type ShadingPattern string
 
 const (
-	ShadingPatternClear             ShadingPattern = "clear"             // 透明
-	ShadingPatternSolid             ShadingPattern = "solid"             // 实色
+	ShadingPatternClear             ShadingPattern = "clear"             // 透明/实色
+	ShadingPatternSolid             ShadingPattern = "clear"             // 实色（使用clear实现）
 	ShadingPatternPct5              ShadingPattern = "pct5"              // 5%
 	ShadingPatternPct10             ShadingPattern = "pct10"             // 10%
 	ShadingPatternPct20             ShadingPattern = "pct20"             // 20%
