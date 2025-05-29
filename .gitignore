@@ -16,6 +16,8 @@ output/
 *.doc
 !demo_document.docx
 
+.vscode/
+
 # Go相关
 *.exe
 *.exe~

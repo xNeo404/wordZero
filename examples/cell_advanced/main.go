@@ -362,7 +362,7 @@ func main() {
 	doc.AddParagraph("• 单元格文字方向设置（支持6种方向）")
 	doc.AddParagraph("• 文字方向与其他格式的组合使用")
 
-	filename := "../output/cell_advanced_demo.docx"
+	filename := "examples/output/cell_advanced_demo.docx"
 	err = doc.Save(filename)
 	if err != nil {
 		log.Fatalf("保存文档失败: %v", err)

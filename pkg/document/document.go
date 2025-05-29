@@ -21,6 +21,8 @@ type Document struct {
 	Body *Body
 	// 文档关系
 	relationships *Relationships
+	// 文档级关系（用于页眉页脚等）
+	documentRelationships *Relationships
 	// 内容类型
 	contentTypes *ContentTypes
 	// 样式管理器
@@ -77,11 +79,13 @@ type Paragraph struct {
 
 // ParagraphProperties 段落属性
 type ParagraphProperties struct {
-	XMLName        xml.Name        `xml:"w:pPr"`
-	ParagraphStyle *ParagraphStyle `xml:"w:pStyle,omitempty"`
-	Spacing        *Spacing        `xml:"w:spacing,omitempty"`
-	Justification  *Justification  `xml:"w:jc,omitempty"`
-	Indentation    *Indentation    `xml:"w:ind,omitempty"`
+	XMLName             xml.Name             `xml:"w:pPr"`
+	ParagraphStyle      *ParagraphStyle      `xml:"w:pStyle,omitempty"`
+	NumberingProperties *NumberingProperties `xml:"w:numPr,omitempty"`
+	Spacing             *Spacing             `xml:"w:spacing,omitempty"`
+	Justification       *Justification       `xml:"w:jc,omitempty"`
+	Indentation         *Indentation         `xml:"w:ind,omitempty"`
+	Tabs                *Tabs                `xml:"w:tabs,omitempty"`
 }
 
 // Spacing 间距设置
@@ -102,7 +106,9 @@ type Justification struct {
 type Run struct {
 	XMLName    xml.Name       `xml:"w:r"`
 	Properties *RunProperties `xml:"w:rPr,omitempty"`
-	Text       Text           `xml:"w:t"`
+	Text       Text           `xml:"w:t,omitempty"`
+	FieldChar  *FieldChar     `xml:"w:fldChar,omitempty"`
+	InstrText  *InstrText     `xml:"w:instrText,omitempty"`
 }
 
 // RunProperties 文本属性
@@ -180,8 +186,11 @@ type Override struct {
 
 // FontFamily 字体族
 type FontFamily struct {
-	XMLName xml.Name `xml:"w:rFonts"`
-	ASCII   string   `xml:"w:ascii,attr,omitempty"`
+	XMLName  xml.Name `xml:"w:rFonts"`
+	ASCII    string   `xml:"w:ascii,attr,omitempty"`
+	HAnsi    string   `xml:"w:hAnsi,attr,omitempty"`
+	EastAsia string   `xml:"w:eastAsia,attr,omitempty"`
+	CS       string   `xml:"w:cs,attr,omitempty"`
 }
 
 // TextFormat 文本格式配置
@@ -223,9 +232,42 @@ type Indentation struct {
 	Right     string   `xml:"w:right,attr,omitempty"`
 }
 
+// Tabs 制表符设置
+type Tabs struct {
+	XMLName xml.Name `xml:"w:tabs"`
+	Tabs    []TabDef `xml:"w:tab"`
+}
+
+// TabDef 制表符定义
+type TabDef struct {
+	XMLName xml.Name `xml:"w:tab"`
+	Val     string   `xml:"w:val,attr"`
+	Leader  string   `xml:"w:leader,attr,omitempty"`
+	Pos     string   `xml:"w:pos,attr"`
+}
+
 // ParagraphStyle 段落样式引用
 type ParagraphStyle struct {
 	XMLName xml.Name `xml:"w:pStyle"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// NumberingProperties 段落编号属性
+type NumberingProperties struct {
+	XMLName xml.Name `xml:"w:numPr"`
+	ILevel  *ILevel  `xml:"w:ilvl,omitempty"`
+	NumID   *NumID   `xml:"w:numId,omitempty"`
+}
+
+// ILevel 编号级别
+type ILevel struct {
+	XMLName xml.Name `xml:"w:ilvl"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// NumID 编号ID
+type NumID struct {
+	XMLName xml.Name `xml:"w:numId"`
 	Val     string   `xml:"w:val,attr"`
 }
 
@@ -239,6 +281,10 @@ func New() *Document {
 		},
 		styleManager: style.NewStyleManager(),
 		parts:        make(map[string][]byte),
+		documentRelationships: &Relationships{
+			Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
+			Relationships: []Relationship{},
+		},
 	}
 
 	doc.initializeStructure()
@@ -279,6 +325,10 @@ func Open(filename string) (*Document, error) {
 
 	doc := &Document{
 		parts: make(map[string][]byte),
+		documentRelationships: &Relationships{
+			Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
+			Relationships: []Relationship{},
+		},
 	}
 
 	// 读取所有文件部件
@@ -681,13 +731,39 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 //	// 添加三级标题
 //	h3 := doc.AddHeadingParagraph("1.1.1 研究目标", 3)
 func (d *Document) AddHeadingParagraph(text string, level int) *Paragraph {
+	return d.AddHeadingParagraphWithBookmark(text, level, "")
+}
+
+// AddHeadingParagraphWithBookmark 向文档添加一个带书签的标题段落。
+//
+// 参数 text 是标题的文本内容。
+// 参数 level 是标题级别（1-9），对应 Heading1 到 Heading9。
+// 参数 bookmarkName 是书签名称，如果为空字符串则不添加书签。
+//
+// 返回新创建段落的指针，可用于进一步设置段落属性。
+// 此方法会自动设置正确的样式引用，确保标题能被 Word 导航窗格识别，
+// 并在需要时添加书签以支持目录导航和超链接。
+//
+// 示例:
+//
+//	doc := document.New()
+//
+//	// 添加带书签的一级标题
+//	h1 := doc.AddHeadingParagraphWithBookmark("第一章：概述", 1, "chapter1")
+//
+//	// 添加不带书签的二级标题
+//	h2 := doc.AddHeadingParagraphWithBookmark("1.1 背景", 2, "")
+//
+//	// 添加自动生成书签名的三级标题
+//	h3 := doc.AddHeadingParagraphWithBookmark("1.1.1 研究目标", 3, "auto_bookmark")
+func (d *Document) AddHeadingParagraphWithBookmark(text string, level int, bookmarkName string) *Paragraph {
 	if level < 1 || level > 9 {
 		Debugf("标题级别 %d 超出范围，使用默认级别 1", level)
 		level = 1
 	}
 
 	styleID := fmt.Sprintf("Heading%d", level)
-	Debugf("添加标题段落: %s (级别: %d, 样式: %s)", text, level, styleID)
+	Debugf("添加标题段落: %s (级别: %d, 样式: %s, 书签: %s)", text, level, styleID, bookmarkName)
 
 	// 获取样式管理器中的样式
 	headingStyle := d.styleManager.GetStyle(styleID)
@@ -744,21 +820,52 @@ func (d *Document) AddHeadingParagraph(text string, level int) *Paragraph {
 		}
 	}
 
+	// 创建段落的Run列表
+	runs := make([]Run, 0)
+
+	// 如果需要添加书签，在段落开始处添加书签开始标记
+	if bookmarkName != "" {
+		// 生成唯一的书签ID
+		bookmarkID := fmt.Sprintf("bookmark_%d_%s", len(d.Body.Elements), bookmarkName)
+
+		// 添加书签开始标记作为单独的元素到文档主体中
+		d.Body.Elements = append(d.Body.Elements, &Bookmark{
+			ID:   bookmarkID,
+			Name: bookmarkName,
+		})
+
+		Debugf("添加书签开始: ID=%s, Name=%s", bookmarkID, bookmarkName)
+	}
+
+	// 添加文本内容
+	runs = append(runs, Run{
+		Properties: runProps,
+		Text: Text{
+			Content: text,
+			Space:   "preserve",
+		},
+	})
+
 	// 创建段落
 	p := &Paragraph{
 		Properties: paraProps,
-		Runs: []Run{
-			{
-				Properties: runProps,
-				Text: Text{
-					Content: text,
-					Space:   "preserve",
-				},
-			},
-		},
+		Runs:       runs,
 	}
 
 	d.Body.Elements = append(d.Body.Elements, p)
+
+	// 如果需要添加书签，在段落结束后添加书签结束标记
+	if bookmarkName != "" {
+		bookmarkID := fmt.Sprintf("bookmark_%d_%s", len(d.Body.Elements)-2, bookmarkName) // -2 因为段落已经添加了
+
+		// 添加书签结束标记
+		d.Body.Elements = append(d.Body.Elements, &BookmarkEnd{
+			ID: bookmarkID,
+		})
+
+		Debugf("添加书签结束: ID=%s", bookmarkID)
+	}
+
 	return p
 }
 
@@ -836,162 +943,648 @@ func (d *Document) parseDocument() error {
 		return WrapError("parse_document", ErrDocumentNotFound)
 	}
 
-	// 创建一个临时结构来解析完整的文档
-	var doc struct {
-		XMLName xml.Name `xml:"document"`
-		Body    struct {
-			XMLName    xml.Name `xml:"body"`
-			Paragraphs []struct {
-				XMLName    xml.Name `xml:"p"`
-				Properties *struct {
-					XMLName        xml.Name `xml:"pPr"`
-					ParagraphStyle *struct {
-						XMLName xml.Name `xml:"pStyle"`
-						Val     string   `xml:"val,attr"`
-					} `xml:"pStyle,omitempty"`
-					Spacing *struct {
-						XMLName xml.Name `xml:"spacing"`
-						Before  string   `xml:"before,attr,omitempty"`
-						After   string   `xml:"after,attr,omitempty"`
-						Line    string   `xml:"line,attr,omitempty"`
-					} `xml:"spacing,omitempty"`
-					Justification *struct {
-						XMLName xml.Name `xml:"jc"`
-						Val     string   `xml:"val,attr"`
-					} `xml:"jc,omitempty"`
-					Indentation *struct {
-						XMLName   xml.Name `xml:"ind"`
-						FirstLine string   `xml:"firstLine,attr,omitempty"`
-						Left      string   `xml:"left,attr,omitempty"`
-						Right     string   `xml:"right,attr,omitempty"`
-					} `xml:"ind,omitempty"`
-				} `xml:"pPr,omitempty"`
-				Runs []struct {
-					XMLName    xml.Name `xml:"r"`
-					Properties *struct {
-						XMLName xml.Name `xml:"rPr"`
-						Bold    *struct {
-							XMLName xml.Name `xml:"b"`
-						} `xml:"b,omitempty"`
-						Italic *struct {
-							XMLName xml.Name `xml:"i"`
-						} `xml:"i,omitempty"`
-						FontSize *struct {
-							XMLName xml.Name `xml:"sz"`
-							Val     string   `xml:"val,attr"`
-						} `xml:"sz,omitempty"`
-						Color *struct {
-							XMLName xml.Name `xml:"color"`
-							Val     string   `xml:"val,attr"`
-						} `xml:"color,omitempty"`
-						FontFamily *struct {
-							XMLName xml.Name `xml:"rFonts"`
-							ASCII   string   `xml:"ascii,attr,omitempty"`
-						} `xml:"rFonts,omitempty"`
-					} `xml:"rPr,omitempty"`
-					Text struct {
-						XMLName xml.Name `xml:"t"`
-						Space   string   `xml:"space,attr,omitempty"`
-						Content string   `xml:",chardata"`
-					} `xml:"t"`
-				} `xml:"r"`
-			} `xml:"p"`
-		} `xml:"body"`
-	}
-
-	if err := xml.Unmarshal(docData, &doc); err != nil {
-		Errorf("XML解析失败: %v", err)
-		return WrapError("unmarshal_xml", err)
-	}
-
-	// 转换为内部结构
-	d.Body = &Body{
-		Elements: make([]interface{}, len(doc.Body.Paragraphs)),
-	}
-
-	for i, p := range doc.Body.Paragraphs {
-		paragraph := &Paragraph{
-			Runs: make([]Run, len(p.Runs)),
+	// 首先解析基本结构
+	decoder := xml.NewDecoder(bytes.NewReader(docData))
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return WrapError("parse_document", err)
 		}
 
-		// 转换段落属性
-		if p.Properties != nil {
-			paragraph.Properties = &ParagraphProperties{}
-
-			if p.Properties.ParagraphStyle != nil {
-				paragraph.Properties.ParagraphStyle = &ParagraphStyle{
-					Val: p.Properties.ParagraphStyle.Val,
+		switch t := token.(type) {
+		case xml.StartElement:
+			if t.Name.Local == "document" && t.Name.Space == "http://schemas.openxmlformats.org/wordprocessingml/2006/main" {
+				// 开始解析文档
+				if err := d.parseDocumentElement(decoder); err != nil {
+					return err
 				}
-			}
-
-			if p.Properties.Spacing != nil {
-				paragraph.Properties.Spacing = &Spacing{
-					Before: p.Properties.Spacing.Before,
-					After:  p.Properties.Spacing.After,
-					Line:   p.Properties.Spacing.Line,
-				}
-			}
-
-			if p.Properties.Justification != nil {
-				paragraph.Properties.Justification = &Justification{
-					Val: p.Properties.Justification.Val,
-				}
-			}
-
-			if p.Properties.Indentation != nil {
-				paragraph.Properties.Indentation = &Indentation{
-					FirstLine: p.Properties.Indentation.FirstLine,
-					Left:      p.Properties.Indentation.Left,
-					Right:     p.Properties.Indentation.Right,
-				}
+				goto done
 			}
 		}
-
-		for j, r := range p.Runs {
-			run := Run{
-				Text: Text{
-					Content: r.Text.Content,
-				},
-			}
-
-			if r.Properties != nil {
-				run.Properties = &RunProperties{}
-
-				if r.Properties.Bold != nil {
-					run.Properties.Bold = &Bold{}
-				}
-
-				if r.Properties.Italic != nil {
-					run.Properties.Italic = &Italic{}
-				}
-
-				if r.Properties.FontSize != nil {
-					run.Properties.FontSize = &FontSize{
-						Val: r.Properties.FontSize.Val,
-					}
-				}
-
-				if r.Properties.Color != nil {
-					run.Properties.Color = &Color{
-						Val: r.Properties.Color.Val,
-					}
-				}
-
-				if r.Properties.FontFamily != nil {
-					run.Properties.FontFamily = &FontFamily{
-						ASCII: r.Properties.FontFamily.ASCII,
-					}
-				}
-			}
-
-			paragraph.Runs[j] = run
-		}
-
-		d.Body.Elements[i] = paragraph
 	}
 
+done:
 	Infof("解析完成，共 %d 个元素", len(d.Body.Elements))
 	return nil
+}
+
+// parseDocumentElement 解析文档元素
+func (d *Document) parseDocumentElement(decoder *xml.Decoder) error {
+	// 初始化Body
+	d.Body = &Body{
+		Elements: make([]interface{}, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return WrapError("parse_document_element", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch {
+			case t.Name.Local == "body":
+				// 解析文档主体
+				if err := d.parseBodyElement(decoder); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "document" {
+				return nil
+			}
+		}
+	}
+
+	return nil
+}
+
+// parseBodyElement 解析文档主体元素
+func (d *Document) parseBodyElement(decoder *xml.Decoder) error {
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return WrapError("parse_body_element", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			element, err := d.parseBodySubElement(decoder, t)
+			if err != nil {
+				return err
+			}
+			if element != nil {
+				d.Body.Elements = append(d.Body.Elements, element)
+			}
+		case xml.EndElement:
+			if t.Name.Local == "body" {
+				return nil
+			}
+		}
+	}
+
+	return nil
+}
+
+// parseBodySubElement 解析文档主体的子元素
+func (d *Document) parseBodySubElement(decoder *xml.Decoder, startElement xml.StartElement) (interface{}, error) {
+	switch startElement.Name.Local {
+	case "p":
+		// 解析段落
+		return d.parseParagraph(decoder, startElement)
+	case "tbl":
+		// 解析表格
+		return d.parseTable(decoder, startElement)
+	case "sectPr":
+		// 解析节属性
+		return d.parseSectionProperties(decoder, startElement)
+	default:
+		// 跳过未知元素
+		Debugf("跳过未知元素: %s", startElement.Name.Local)
+		return nil, d.skipElement(decoder, startElement.Name.Local)
+	}
+}
+
+// parseParagraph 解析段落
+func (d *Document) parseParagraph(decoder *xml.Decoder, startElement xml.StartElement) (*Paragraph, error) {
+	paragraph := &Paragraph{
+		Runs: make([]Run, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_paragraph", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "pPr":
+				// 解析段落属性
+				if err := d.parseParagraphProperties(decoder, paragraph); err != nil {
+					return nil, err
+				}
+			case "r":
+				// 解析运行
+				run, err := d.parseRun(decoder, t)
+				if err != nil {
+					return nil, err
+				}
+				if run != nil {
+					paragraph.Runs = append(paragraph.Runs, *run)
+				}
+			default:
+				// 跳过其他元素
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "p" {
+				return paragraph, nil
+			}
+		}
+	}
+}
+
+// parseParagraphProperties 解析段落属性
+func (d *Document) parseParagraphProperties(decoder *xml.Decoder, paragraph *Paragraph) error {
+	paragraph.Properties = &ParagraphProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return WrapError("parse_paragraph_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "pStyle":
+				// 段落样式
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					paragraph.Properties.ParagraphStyle = &ParagraphStyle{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "spacing":
+				// 间距
+				spacing := &Spacing{}
+				spacing.Before = getAttributeValue(t.Attr, "before")
+				spacing.After = getAttributeValue(t.Attr, "after")
+				spacing.Line = getAttributeValue(t.Attr, "line")
+				paragraph.Properties.Spacing = spacing
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "jc":
+				// 对齐
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					paragraph.Properties.Justification = &Justification{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "ind":
+				// 缩进
+				indentation := &Indentation{}
+				indentation.FirstLine = getAttributeValue(t.Attr, "firstLine")
+				indentation.Left = getAttributeValue(t.Attr, "left")
+				indentation.Right = getAttributeValue(t.Attr, "right")
+				paragraph.Properties.Indentation = indentation
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "pPr" {
+				return nil
+			}
+		}
+	}
+}
+
+// parseRun 解析运行
+func (d *Document) parseRun(decoder *xml.Decoder, startElement xml.StartElement) (*Run, error) {
+	run := &Run{
+		Text: Text{},
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_run", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "rPr":
+				// 解析运行属性
+				if err := d.parseRunProperties(decoder, run); err != nil {
+					return nil, err
+				}
+			case "t":
+				// 解析文本
+				space := getAttributeValue(t.Attr, "space")
+				run.Text.Space = space
+
+				// 读取文本内容
+				content, err := d.readElementText(decoder, "t")
+				if err != nil {
+					return nil, err
+				}
+				run.Text.Content = content
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "r" {
+				return run, nil
+			}
+		}
+	}
+}
+
+// parseRunProperties 解析运行属性
+func (d *Document) parseRunProperties(decoder *xml.Decoder, run *Run) error {
+	run.Properties = &RunProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return WrapError("parse_run_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "b":
+				run.Properties.Bold = &Bold{}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "i":
+				run.Properties.Italic = &Italic{}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "sz":
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					run.Properties.FontSize = &FontSize{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "color":
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					run.Properties.Color = &Color{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "rFonts":
+				ascii := getAttributeValue(t.Attr, "ascii")
+				if ascii != "" {
+					run.Properties.FontFamily = &FontFamily{ASCII: ascii}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "rPr" {
+				return nil
+			}
+		}
+	}
+}
+
+// parseTable 解析表格
+func (d *Document) parseTable(decoder *xml.Decoder, startElement xml.StartElement) (*Table, error) {
+	table := &Table{
+		Rows: make([]TableRow, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "tblPr":
+				// 解析表格属性
+				if err := d.parseTableProperties(decoder, table); err != nil {
+					return nil, err
+				}
+			case "tblGrid":
+				// 解析表格网格
+				if err := d.parseTableGrid(decoder, table); err != nil {
+					return nil, err
+				}
+			case "tr":
+				// 解析表格行
+				row, err := d.parseTableRow(decoder, t)
+				if err != nil {
+					return nil, err
+				}
+				if row != nil {
+					table.Rows = append(table.Rows, *row)
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tbl" {
+				return table, nil
+			}
+		}
+	}
+}
+
+// parseTableProperties 解析表格属性
+func (d *Document) parseTableProperties(decoder *xml.Decoder, table *Table) error {
+	table.Properties = &TableProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return WrapError("parse_table_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "tblW":
+				w := getAttributeValue(t.Attr, "w")
+				wType := getAttributeValue(t.Attr, "type")
+				if w != "" || wType != "" {
+					table.Properties.TableW = &TableWidth{W: w, Type: wType}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "jc":
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					table.Properties.TableJc = &TableJc{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			default:
+				// 跳过其他表格属性，可以根据需要扩展
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tblPr" {
+				return nil
+			}
+		}
+	}
+}
+
+// parseTableGrid 解析表格网格
+func (d *Document) parseTableGrid(decoder *xml.Decoder, table *Table) error {
+	table.Grid = &TableGrid{
+		Cols: make([]TableGridCol, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return WrapError("parse_table_grid", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "gridCol":
+				w := getAttributeValue(t.Attr, "w")
+				col := TableGridCol{W: w}
+				table.Grid.Cols = append(table.Grid.Cols, col)
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tblGrid" {
+				return nil
+			}
+		}
+	}
+}
+
+// parseTableRow 解析表格行
+func (d *Document) parseTableRow(decoder *xml.Decoder, startElement xml.StartElement) (*TableRow, error) {
+	row := &TableRow{
+		Cells: make([]TableCell, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_row", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "trPr":
+				// 解析行属性（暂时跳过，可以根据需要扩展）
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "tc":
+				// 解析表格单元格
+				cell, err := d.parseTableCell(decoder, t)
+				if err != nil {
+					return nil, err
+				}
+				if cell != nil {
+					row.Cells = append(row.Cells, *cell)
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tr" {
+				return row, nil
+			}
+		}
+	}
+}
+
+// parseTableCell 解析表格单元格
+func (d *Document) parseTableCell(decoder *xml.Decoder, startElement xml.StartElement) (*TableCell, error) {
+	cell := &TableCell{
+		Paragraphs: make([]Paragraph, 0),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_cell", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "tcPr":
+				// 解析单元格属性（暂时跳过，可以根据需要扩展）
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "p":
+				// 解析段落
+				para, err := d.parseParagraph(decoder, t)
+				if err != nil {
+					return nil, err
+				}
+				if para != nil {
+					cell.Paragraphs = append(cell.Paragraphs, *para)
+				}
+			default:
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tc" {
+				return cell, nil
+			}
+		}
+	}
+}
+
+// parseSectionProperties 解析节属性
+func (d *Document) parseSectionProperties(decoder *xml.Decoder, startElement xml.StartElement) (*SectionProperties, error) {
+	sectPr := &SectionProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_section_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "pgSz":
+				// 解析页面尺寸
+				w := getAttributeValue(t.Attr, "w")
+				h := getAttributeValue(t.Attr, "h")
+				orient := getAttributeValue(t.Attr, "orient")
+				if w != "" || h != "" {
+					sectPr.PageSize = &PageSizeXML{W: w, H: h, Orient: orient}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "pgMar":
+				// 解析页面边距
+				margin := &PageMargin{}
+				margin.Top = getAttributeValue(t.Attr, "top")
+				margin.Right = getAttributeValue(t.Attr, "right")
+				margin.Bottom = getAttributeValue(t.Attr, "bottom")
+				margin.Left = getAttributeValue(t.Attr, "left")
+				margin.Header = getAttributeValue(t.Attr, "header")
+				margin.Footer = getAttributeValue(t.Attr, "footer")
+				margin.Gutter = getAttributeValue(t.Attr, "gutter")
+				sectPr.PageMargins = margin
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "cols":
+				// 解析分栏
+				space := getAttributeValue(t.Attr, "space")
+				num := getAttributeValue(t.Attr, "num")
+				if space != "" || num != "" {
+					sectPr.Columns = &Columns{Space: space, Num: num}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			default:
+				// 跳过其他节属性
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "sectPr" {
+				return sectPr, nil
+			}
+		}
+	}
+}
+
+// skipElement 跳过元素及其子元素
+func (d *Document) skipElement(decoder *xml.Decoder, elementName string) error {
+	depth := 1
+	for depth > 0 {
+		token, err := decoder.Token()
+		if err != nil {
+			return WrapError("skip_element", err)
+		}
+
+		switch token.(type) {
+		case xml.StartElement:
+			depth++
+		case xml.EndElement:
+			depth--
+		}
+	}
+	return nil
+}
+
+// readElementText 读取元素的文本内容
+func (d *Document) readElementText(decoder *xml.Decoder, elementName string) (string, error) {
+	var content string
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return "", WrapError("read_element_text", err)
+		}
+
+		switch t := token.(type) {
+		case xml.CharData:
+			content += string(t)
+		case xml.EndElement:
+			if t.Name.Local == elementName {
+				return content, nil
+			}
+		}
+	}
+}
+
+// getAttributeValue 获取属性值
+func getAttributeValue(attrs []xml.Attr, name string) string {
+	for _, attr := range attrs {
+		if attr.Name.Local == name {
+			return attr.Value
+		}
+	}
+	return ""
 }
 
 // serializeDocument 序列化文档内容
@@ -1038,16 +1631,22 @@ func (d *Document) serializeRelationships() {
 
 // serializeDocumentRelationships 序列化文档关系
 func (d *Document) serializeDocumentRelationships() {
+	// 获取已存在的关系，从索引1开始（保留给styles.xml）
+	relationships := []Relationship{
+		{
+			ID:     "rId1",
+			Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+			Target: "styles.xml",
+		},
+	}
+
+	// 添加动态创建的文档级关系（如页眉、页脚等）
+	relationships = append(relationships, d.documentRelationships.Relationships...)
+
 	// 创建文档关系
 	docRels := &Relationships{
-		Xmlns: "http://schemas.openxmlformats.org/package/2006/relationships",
-		Relationships: []Relationship{
-			{
-				ID:     "rId1",
-				Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
-				Target: "styles.xml",
-			},
-		},
+		Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
+		Relationships: relationships,
 	}
 
 	data, _ := xml.MarshalIndent(docRels, "", "  ")

@@ -14,7 +14,28 @@
 
 ### 文档创建与加载
 - [`New()`](document.go#L232) - 创建新的Word文档
-- [`Open(filename string)`](document.go#L269) - 打开现有Word文档
+- [`Open(filename string)`](document.go#L269) - 打开现有Word文档 ✨ **重大改进**
+  
+#### 文档解析功能重大升级 ✨
+`Open` 方法现在支持完整的文档结构解析，包括：
+
+**动态元素解析支持**：
+- **段落解析** (`<w:p>`): 完整解析段落内容、属性、运行和格式
+- **表格解析** (`<w:tbl>`): 支持表格结构、网格、行列、单元格内容
+- **节属性解析** (`<w:sectPr>`): 页面设置、边距、分栏等属性
+- **扩展性设计**: 新的解析架构可轻松添加更多元素类型
+
+**解析器特性**：
+- **流式解析**: 使用XML流式解析器，内存效率高，适用于大型文档
+- **结构保持**: 完整保留文档元素的原始顺序和层次结构
+- **错误恢复**: 智能跳过未知或损坏的元素，确保解析过程稳定
+- **深度解析**: 支持嵌套结构（如表格中的段落、段落中的运行等）
+
+**解析的内容包括**：
+- 段落文本内容和所有格式属性（字体、大小、颜色、样式等）
+- 表格完整结构（行列定义、单元格内容、表格属性）
+- 页面设置信息（页面尺寸、方向、边距等）
+- 样式引用和属性继承关系
 
 ### 文档保存与导出
 - [`Save(filename string)`](document.go#L337) - 保存文档到文件
@@ -24,9 +45,36 @@
 - [`AddParagraph(text string)`](document.go#L420) - 添加简单段落
 - [`AddFormattedParagraph(text string, format *TextFormat)`](document.go#L459) - 添加格式化段落
 - [`AddHeadingParagraph(text string, level int)`](document.go#L682) - 添加标题段落
+- [`AddHeadingParagraphWithBookmark(text string, level int, bookmarkName string)`](document.go#L747) - 添加带书签的标题段落 ✨ **新增功能**
+
+#### 标题段落书签功能 ✨
+`AddHeadingParagraphWithBookmark` 方法现在支持为标题段落添加书签：
+
+**书签功能特性**：
+- **自动书签生成**: 为标题段落创建唯一的书签标识
+- **灵活命名**: 支持自定义书签名称或留空不添加书签
+- **目录兼容**: 生成的书签与目录功能完美兼容，支持导航和超链接
+- **Word标准**: 符合Microsoft Word的书签格式规范
+
+**书签生成规则**：
+- 书签ID自动生成为 `bookmark_{元素索引}_{书签名称}` 格式
+- 书签开始标记插入在段落之前
+- 书签结束标记插入在段落之后
+- 支持空书签名称以跳过书签创建
 
 ### 样式管理
 - [`GetStyleManager()`](document.go#L791) - 获取样式管理器
+
+### 页面设置 ✨ 新增功能
+- [`SetPageSettings(settings *PageSettings)`](page.go) - 设置完整页面属性
+- [`GetPageSettings()`](page.go) - 获取当前页面设置
+- [`SetPageSize(size PageSize)`](page.go) - 设置页面尺寸
+- [`SetCustomPageSize(width, height float64)`](page.go) - 设置自定义页面尺寸（毫米）
+- [`SetPageOrientation(orientation PageOrientation)`](page.go) - 设置页面方向
+- [`SetPageMargins(top, right, bottom, left float64)`](page.go) - 设置页面边距（毫米）
+- [`SetHeaderFooterDistance(header, footer float64)`](page.go) - 设置页眉页脚距离（毫米）
+- [`SetGutterWidth(width float64)`](page.go) - 设置装订线宽度（毫米）
+- [`DefaultPageSettings()`](page.go) - 获取默认页面设置（A4纵向）
 
 ## 段落操作方法
 
@@ -169,11 +217,41 @@
 - `BorderConfig` - 边框配置
 - `ShadingConfig` - 底纹配置
 
+### 页面设置配置 ✨ 新增
+- `PageSettings` - 页面设置配置
+- `PageSize` - 页面尺寸类型（A4、Letter、Legal、A3、A5、Custom）
+- `PageOrientation` - 页面方向（Portrait纵向、Landscape横向）
+- `SectionProperties` - 节属性（包含页面设置信息）
+
 ## 使用示例
 
 ```go
 // 创建新文档
 doc := document.New()
+
+// ✨ 新增：页面设置示例
+// 设置页面为A4横向
+doc.SetPageOrientation(document.OrientationLandscape)
+
+// 设置自定义边距（上下左右：25mm）
+doc.SetPageMargins(25, 25, 25, 25)
+
+// 设置自定义页面尺寸（200mm x 300mm）
+doc.SetCustomPageSize(200, 300)
+
+// 或者使用完整页面设置
+pageSettings := &document.PageSettings{
+    Size:           document.PageSizeLetter,
+    Orientation:    document.OrientationPortrait,
+    MarginTop:      30,
+    MarginRight:    20,
+    MarginBottom:   30,
+    MarginLeft:     20,
+    HeaderDistance: 15,
+    FooterDistance: 15,
+    GutterWidth:    0,
+}
+doc.SetPageSettings(pageSettings)
 
 // 添加段落
 para := doc.AddParagraph("这是一个段落")
