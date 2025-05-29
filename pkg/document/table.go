@@ -183,6 +183,59 @@ func (d *Document) CreateTable(config *TableConfig) *Table {
 				NoHBand:  "0",
 				NoVBand:  "1",
 			},
+			// 添加默认表格边框，使用与tmp_test参考表格相同的单线边框样式
+			TableBorders: &TableBorders{
+				Top: &TableBorder{
+					Val:   "single", // 单线边框样式
+					Sz:    "4",      // 边框粗细（1/8磅）
+					Space: "0",      // 边框间距
+					Color: "auto",   // 自动颜色
+				},
+				Left: &TableBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				Bottom: &TableBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				Right: &TableBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				InsideH: &TableBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				InsideV: &TableBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+			},
+			// 添加表格布局和单元格边距设置，与参考表格保持一致
+			TableLayout: &TableLayoutType{
+				Type: "autofit", // 自动调整布局
+			},
+			TableCellMar: &TableCellMargins{
+				Left: &TableCellSpace{
+					W:    "108", // 左边距（与参考表格一致）
+					Type: "dxa",
+				},
+				Right: &TableCellSpace{
+					W:    "108", // 右边距（与参考表格一致）
+					Type: "dxa",
+				},
+			},
 		},
 		Grid: &TableGrid{},
 		Rows: make([]TableRow, 0, config.Rows),

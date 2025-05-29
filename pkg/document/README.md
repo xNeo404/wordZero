@@ -51,7 +51,7 @@
 ## 表格操作方法
 
 ### 表格创建
-- [`CreateTable(config *TableConfig)`](table.go#L161) - 创建新表格
+- [`CreateTable(config *TableConfig)`](table.go#L161) - 创建新表格（✨ 新增：默认包含单线边框样式）
 - [`AddTable(config *TableConfig)`](table.go#L257) - 添加表格到文档
 
 ### 行操作
