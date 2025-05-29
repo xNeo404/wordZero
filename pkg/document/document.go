@@ -33,6 +33,22 @@ type Document struct {
 type Body struct {
 	XMLName    xml.Name    `xml:"w:body"`
 	Paragraphs []Paragraph `xml:"w:p"`
+	Tables     []Table     `xml:"w:tbl"`
+}
+
+// BodyElement 文档主体元素接口
+type BodyElement interface {
+	ElementType() string
+}
+
+// ElementType 返回段落元素类型
+func (p *Paragraph) ElementType() string {
+	return "paragraph"
+}
+
+// ElementType 返回表格元素类型
+func (t *Table) ElementType() string {
+	return "table"
 }
 
 // Paragraph 表示一个段落

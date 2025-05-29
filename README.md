@@ -56,16 +56,115 @@ WordZero 是一个使用 Golang 实现的 Word 文档操作库，提供基础的
 ### 🚧 规划中功能
 
 #### 表格功能
-- [ ] 表格创建和管理
-- [ ] 单元格合并
-- [ ] 表格样式设置
+
+##### 表格基础操作
+- [x] 表格创建和初始化
+  - [x] 创建指定行列数的表格
+  - [x] 设置表格初始数据
+  - [x] 表格插入到文档指定位置
+- [x] 表格结构管理
+  - [x] 插入行（指定位置、末尾、开头）
+  - [x] 删除行（单行、多行、指定范围）
+- [x] 表格复制和剪切
+- [x] 表格删除和清空
+
+##### 单元格操作
+- [x] 单元格内容管理
+  - [x] 单元格文本设置和获取
+  - [x] 单元格富文本格式支持
+  - [x] 单元格内容清空和重置
+- [x] 单元格合并功能
+  - [x] 横向合并（合并列）
+  - [x] 纵向合并（合并行）
+  - [x] 区域合并（多行多列）
+  - [x] 取消合并操作
+  - [x] 合并状态查询
+- [x] 单元格格式设置
+  - [x] 单元格文字格式（字体、大小、颜色）
+  - [x] 单元格对齐方式（水平、垂直对齐）
+  - [x] 单元格文字方向和旋转
+  - [x] 单元格内边距设置
+
+##### 表格样式和外观
+- [ ] 表格整体样式
+  - [ ] 预定义表格样式模板
+  - [ ] 自定义表格样式创建
+  - [ ] 表格主题色彩应用
+  - [ ] 表格样式继承和覆盖
 - [ ] 表格边框设置
+  - [ ] 外边框样式（线型、颜色、粗细）
+  - [ ] 内边框样式（网格线设置）
+  - [ ] 单元格边框独立设置
+  - [ ] 边框部分应用（顶部、底部、左右）
+  - [ ] 无边框表格支持
+- [ ] 表格背景和填充
+  - [ ] 表格背景色设置
+  - [ ] 单元格背景色设置
+  - [ ] 奇偶行颜色交替
+  - [ ] 渐变背景支持（基础渐变）
+  - [ ] 图案填充支持
+
+##### 表格布局和尺寸
+- [x] 表格尺寸控制
+  - [x] 表格总宽度设置（固定宽度、相对宽度、自动宽度）
+  - [x] 列宽设置（固定宽度、相对宽度、自动调整）
+  - [ ] 行高设置（固定高度、最小高度、自动调整）
+  - [x] 单元格尺寸精确控制
+- [ ] 表格对齐和定位
+  - [x] 表格页面对齐（左对齐、居中、右对齐）
+  - [ ] 表格文字环绕设置
+  - [ ] 表格相对定位
+- [ ] 表格分页控制
+  - [ ] 表格跨页处理
+  - [ ] 标题行重复显示
+  - [ ] 表格分页符控制
+  - [ ] 避免分页的行设置
+
+##### 表格数据处理
+- [x] 数据导入导出
+  - [x] 二维数组数据绑定
+  - [x] 表格数据提取为数组
+  - [x] 批量数据填充
+- [ ] 表格排序功能（Word内置排序）
+  - [ ] 单列排序（升序、降序）
+  - [ ] 多列排序
+  - [ ] 保持标题行不参与排序
+
+##### 高级表格功能
+- [ ] 表格标题和说明
+  - [ ] 表格标题设置（表格上方、下方）
+  - [ ] 表格标题编号自动生成
+  - [ ] 表格描述和备注
+- [ ] 嵌套表格支持
+  - [ ] 单元格内嵌套表格
+  - [ ] 嵌套表格独立样式
+- [ ] 表格模板功能
+  - [ ] 常用表格模板库
+  - [ ] 自定义模板保存
+  - [ ] 模板快速应用
+
+##### 表格访问和查询
+- [x] 表格查找和定位
+  - [x] 按索引获取表格
+  - [ ] 按标题查找表格
+  - [x] 表格位置信息获取
+- [x] 单元格访问接口
+  - [x] 按行列索引访问
+  - [ ] 按范围批量访问
+  - [ ] 单元格遍历迭代器
 
 #### 图片功能  
 - [ ] 图片插入
 - [ ] 图片大小调整
 - [ ] 图片位置设置
 - [ ] 多种图片格式支持（JPG、PNG、GIF）
+
+#### 页面设置功能
+- [ ] 页面大小设置（A4、Letter、Legal等标准尺寸）
+- [ ] 自定义页面尺寸
+- [ ] 页面方向设置（纵向/横向）
+- [ ] 页面边距设置（上下左右边距）
+- [ ] 页面分节和分页控制
 
 #### 高级功能
 - [ ] 页眉页脚
@@ -215,6 +314,121 @@ if err == nil {
 }
 
 doc.Save("styled.docx")
+```
+
+### 高级表格功能
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+)
+
+func main() {
+    doc := document.New()
+    
+    // 1. 创建基础表格
+    config := &document.TableConfig{
+        Rows:  4,
+        Cols:  4,
+        Width: 8000,
+        Data: [][]string{
+            {"学号", "姓名", "语文", "数学"},
+            {"001", "张三", "85", "92"},
+            {"002", "李四", "78", "88"},
+            {"003", "王五", "90", "85"},
+        },
+    }
+    
+    table := doc.AddTable(config)
+    
+    // 2. 设置表头格式
+    headerFormat := &document.CellFormat{
+        TextFormat: &document.TextFormat{
+            Bold:      true,
+            FontSize:  14,
+            FontColor: "FFFFFF", // 白色文字
+            FontName:  "微软雅黑",
+        },
+        HorizontalAlign: document.CellAlignCenter,
+        VerticalAlign:   document.CellVAlignCenter,
+    }
+    
+    // 为第一行设置表头格式
+    for col := 0; col < 4; col++ {
+        table.SetCellFormat(0, col, headerFormat)
+    }
+    
+    // 3. 单元格富文本
+    table.SetCellFormattedText(1, 1, "张三", &document.TextFormat{
+        Bold:      true,
+        FontColor: "FF0000",
+    })
+    
+    // 在同一单元格添加不同格式的文本
+    table.AddCellFormattedText(1, 1, " (优秀)", &document.TextFormat{
+        Italic:    true,
+        FontColor: "00FF00",
+        FontSize:  10,
+    })
+    
+    // 4. 单元格合并
+    // 水平合并
+    table.MergeCellsHorizontal(0, 2, 3) // 合并表头的"语文"和"数学"列
+    table.SetCellText(0, 2, "成绩")
+    
+    // 垂直合并
+    table.MergeCellsVertical(1, 3, 0) // 合并学号列
+    table.SetCellText(1, 0, "2024级")
+    
+    // 区域合并（2x2区域）
+    mergeTable := doc.AddTable(&document.TableConfig{Rows: 4, Cols: 4, Width: 6000})
+    mergeTable.MergeCellsRange(1, 2, 1, 2) // 合并中间2x2区域
+    mergeTable.SetCellText(1, 1, "合并区域")
+    
+    // 5. 检查和取消合并
+    isMerged, _ := table.IsCellMerged(0, 2)
+    if isMerged {
+        // 获取合并信息
+        mergeInfo, _ := table.GetMergedCellInfo(0, 2)
+        log.Printf("合并信息: %+v", mergeInfo)
+        
+        // 可以选择取消合并
+        // table.UnmergeCells(0, 2)
+    }
+    
+    // 6. 内容和格式操作
+    // 清空内容但保留格式
+    table.ClearCellContent(1, 2)
+    table.SetCellText(1, 2, "90")
+    
+    // 清空格式但保留内容
+    table.ClearCellFormat(1, 3)
+    
+    // 7. 设置单元格内边距
+    table.SetCellPadding(0, 0, 10) // 10磅内边距
+    
+    // 8. 设置单元格文字方向
+    // 设置垂直文字（从上到下）
+    table.SetCellTextDirection(1, 0, document.TextDirectionTB)
+    
+    // 通过CellFormat设置完整格式，包括文字方向
+    verticalFormat := &document.CellFormat{
+        TextFormat: &document.TextFormat{
+            Bold:     true,
+            FontSize: 14,
+        },
+        HorizontalAlign: document.CellAlignCenter,
+        VerticalAlign:   document.CellVAlignCenter,
+        TextDirection:   document.TextDirectionTB, // 从上到下
+    }
+    table.SetCellFormat(1, 1, verticalFormat)
+    table.SetCellText(1, 1, "竖排文字")
+    
+    doc.Save("advanced_table.docx")
+}
 ```
 
 ## 项目结构
@@ -390,6 +604,19 @@ go tool cover -html=coverage.out
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 ## 更新日志
+
+### 2025-05-29 单元格文字方向功能实现
+- ✅ 实现单元格文字方向设置功能，支持6种方向：
+  - `TextDirectionLR`：从左到右（默认）
+  - `TextDirectionTB`：从上到下
+  - `TextDirectionBT`：从下到上  
+  - `TextDirectionRL`：从右到左
+  - `TextDirectionTBV`：从上到下，垂直显示
+  - `TextDirectionBTV`：从下到上，垂直显示
+- ✅ 添加 `SetCellTextDirection()` 和 `GetCellTextDirection()` 方法
+- ✅ 扩展 `CellFormat` 结构支持文字方向属性
+- ✅ 添加完整的测试用例和演示程序
+- ✅ 更新README文档和使用示例
 
 ### 2025-05-29 测试修复
 - ✅ 修复 `TestComplexDocument` 测试：调整期望段落数量从7改为6，与实际创建的段落数量一致
