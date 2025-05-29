@@ -76,6 +76,42 @@
 - [`SetGutterWidth(width float64)`](page.go) - 设置装订线宽度（毫米）
 - [`DefaultPageSettings()`](page.go) - 获取默认页面设置（A4纵向）
 
+### 页眉页脚操作 ✨ 新增功能
+- [`AddHeader(headerType HeaderFooterType, text string)`](header_footer.go) - 添加页眉
+- [`AddFooter(footerType HeaderFooterType, text string)`](header_footer.go) - 添加页脚
+- [`AddHeaderWithPageNumber(headerType HeaderFooterType, text string, showPageNum bool)`](header_footer.go) - 添加带页码的页眉
+- [`AddFooterWithPageNumber(footerType HeaderFooterType, text string, showPageNum bool)`](header_footer.go) - 添加带页码的页脚
+- [`SetDifferentFirstPage(different bool)`](header_footer.go) - 设置首页不同
+
+### 目录功能 ✨ 新增功能
+- [`GenerateTOC(config *TOCConfig)`](toc.go) - 生成目录
+- [`UpdateTOC()`](toc.go) - 更新目录
+- [`AddHeadingWithBookmark(text string, level int, bookmarkName string)`](toc.go) - 添加带书签的标题
+- [`AutoGenerateTOC(config *TOCConfig)`](toc.go) - 自动生成目录
+- [`GetHeadingCount()`](toc.go) - 获取标题统计
+- [`ListHeadings()`](toc.go) - 列出所有标题
+- [`SetTOCStyle(level int, style *TextFormat)`](toc.go) - 设置目录样式
+
+### 脚注与尾注功能 ✨ 新增功能
+- [`AddFootnote(text string, footnoteText string)`](footnotes.go) - 添加脚注
+- [`AddEndnote(text string, endnoteText string)`](footnotes.go) - 添加尾注
+- [`AddFootnoteToRun(run *Run, footnoteText string)`](footnotes.go) - 为运行添加脚注
+- [`SetFootnoteConfig(config *FootnoteConfig)`](footnotes.go) - 设置脚注配置
+- [`GetFootnoteCount()`](footnotes.go) - 获取脚注数量
+- [`GetEndnoteCount()`](footnotes.go) - 获取尾注数量
+- [`RemoveFootnote(footnoteID string)`](footnotes.go) - 移除脚注
+- [`RemoveEndnote(endnoteID string)`](footnotes.go) - 移除尾注
+
+### 列表与编号功能 ✨ 新增功能
+- [`AddListItem(text string, config *ListConfig)`](numbering.go) - 添加列表项
+- [`AddBulletList(text string, level int, bulletType BulletType)`](numbering.go) - 添加无序列表
+- [`AddNumberedList(text string, level int, numType ListType)`](numbering.go) - 添加有序列表
+- [`CreateMultiLevelList(items []ListItem)`](numbering.go) - 创建多级列表
+- [`RestartNumbering(numID string)`](numbering.go) - 重启编号
+
+### 结构化文档标签 ✨ 新增功能
+- [`CreateTOCSDT(title string, maxLevel int)`](sdt.go) - 创建目录SDT结构
+
 ## 段落操作方法
 
 ### 段落格式设置
@@ -201,6 +237,10 @@
 - [`WrapErrorWithContext(operation string, err error, context string)`](errors.go#L64) - 带上下文包装错误
 - [`NewValidationError(field, value, message string)`](errors.go#L84) - 创建验证错误
 
+### 域字段工具 ✨ 新增功能
+- [`CreateHyperlinkField(anchor string)`](field.go) - 创建超链接域
+- [`CreatePageRefField(anchor string)`](field.go) - 创建页码引用域
+
 ## 常用配置结构
 
 ### 文本格式
@@ -222,6 +262,48 @@
 - `PageSize` - 页面尺寸类型（A4、Letter、Legal、A3、A5、Custom）
 - `PageOrientation` - 页面方向（Portrait纵向、Landscape横向）
 - `SectionProperties` - 节属性（包含页面设置信息）
+
+### 页眉页脚配置 ✨ 新增
+- `HeaderFooterType` - 页眉页脚类型（Default、First、Even）
+- `Header` - 页眉结构
+- `Footer` - 页脚结构
+- `HeaderFooterReference` - 页眉页脚引用
+- `PageNumber` - 页码字段
+
+### 目录配置 ✨ 新增
+- `TOCConfig` - 目录配置
+- `TOCEntry` - 目录条目
+- `Bookmark` - 书签结构
+- `BookmarkEnd` - 书签结束标记
+
+### 脚注尾注配置 ✨ 新增
+- `FootnoteConfig` - 脚注配置
+- `FootnoteType` - 脚注类型（Footnote脚注、Endnote尾注）
+- `FootnoteNumberFormat` - 脚注编号格式
+- `FootnoteRestart` - 脚注重新开始规则
+- `FootnotePosition` - 脚注位置
+- `Footnote` - 脚注结构
+- `Endnote` - 尾注结构
+
+### 列表编号配置 ✨ 新增
+- `ListConfig` - 列表配置
+- `ListType` - 列表类型（Bullet无序、Number有序等）
+- `BulletType` - 项目符号类型
+- `ListItem` - 列表项结构
+- `Numbering` - 编号定义
+- `AbstractNum` - 抽象编号定义
+- `Level` - 编号级别
+
+### 结构化文档标签配置 ✨ 新增
+- `SDT` - 结构化文档标签
+- `SDTProperties` - SDT属性
+- `SDTContent` - SDT内容
+
+### 域字段配置 ✨ 新增
+- `FieldChar` - 域字符
+- `InstrText` - 域指令文本
+- `HyperlinkField` - 超链接域
+- `PageRefField` - 页码引用域
 
 ## 使用示例
 
@@ -253,6 +335,43 @@ pageSettings := &document.PageSettings{
 }
 doc.SetPageSettings(pageSettings)
 
+// ✨ 新增：页眉页脚示例
+// 添加页眉
+doc.AddHeader(document.HeaderFooterTypeDefault, "这是页眉")
+
+// 添加带页码的页脚
+doc.AddFooterWithPageNumber(document.HeaderFooterTypeDefault, "第", true)
+
+// 设置首页不同
+doc.SetDifferentFirstPage(true)
+
+// ✨ 新增：目录示例
+// 添加带书签的标题
+doc.AddHeadingWithBookmark("第一章 概述", 1, "chapter1")
+doc.AddHeadingWithBookmark("1.1 背景", 2, "section1_1")
+
+// 生成目录
+tocConfig := document.DefaultTOCConfig()
+tocConfig.Title = "目录"
+tocConfig.MaxLevel = 3
+doc.GenerateTOC(tocConfig)
+
+// ✨ 新增：脚注示例
+// 添加脚注
+doc.AddFootnote("这是正文内容", "这是脚注内容")
+
+// 添加尾注
+doc.AddEndnote("更多说明", "这是尾注内容")
+
+// ✨ 新增：列表示例
+// 添加无序列表
+doc.AddBulletList("列表项1", 0, document.BulletTypeDot)
+doc.AddBulletList("列表项2", 1, document.BulletTypeCircle)
+
+// 添加有序列表
+doc.AddNumberedList("第一项", 0, document.ListTypeDecimal)
+doc.AddNumberedList("第二项", 0, document.ListTypeDecimal)
+
 // 添加段落
 para := doc.AddParagraph("这是一个段落")
 para.SetAlignment(document.AlignCenter)
@@ -276,4 +395,9 @@ doc.Save("example.docx")
 1. 所有位置索引都是从0开始
 2. 宽度单位使用磅（pt），1磅 = 20twips
 3. 颜色使用十六进制格式，如 "FF0000" 表示红色
-4. 在操作表格前请确保行列索引有效，否则可能返回错误 
+4. 在操作表格前请确保行列索引有效，否则可能返回错误
+5. 页眉页脚类型包括：Default（默认）、First（首页）、Even（偶数页）
+6. 目录功能需要先添加带书签的标题，然后调用生成目录方法
+7. 脚注和尾注会自动编号，支持多种编号格式和重启规则
+8. 列表支持多级嵌套，最多支持9级缩进
+9. 结构化文档标签主要用于目录等特殊功能的实现 

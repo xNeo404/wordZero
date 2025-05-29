@@ -32,11 +32,20 @@ wordZero/
 │   ├── document/            # 文档核心操作
 │   │   ├── document.go      # 主要文档操作API
 │   │   ├── table.go         # 表格操作功能
+│   │   ├── page.go          # 页面设置功能 ✨ 新增
+│   │   ├── header_footer.go # 页眉页脚功能 ✨ 新增
+│   │   ├── toc.go           # 目录生成功能 ✨ 新增
+│   │   ├── footnotes.go     # 脚注尾注功能 ✨ 新增
+│   │   ├── numbering.go     # 列表编号功能 ✨ 新增
+│   │   ├── sdt.go           # 结构化文档标签 ✨ 新增
+│   │   ├── field.go         # 域字段功能 ✨ 新增
+│   │   ├── properties.go    # 文档属性管理 ✨ 新增
 │   │   ├── errors.go        # 错误定义和处理
 │   │   ├── logger.go        # 日志系统
 │   │   ├── doc.go           # 包文档
 │   │   ├── document_test.go # 文档操作单元测试
-│   │   └── table_test.go    # 表格功能单元测试
+│   │   ├── table_test.go    # 表格功能单元测试
+│   │   └── page_test.go     # 页面设置单元测试 ✨ 新增
 │   └── style/               # 样式管理系统
 │       ├── style.go         # 样式核心定义
 │       ├── api.go           # 快速API接口
@@ -58,6 +67,10 @@ wordZero/
 │   ├── table_style/         # 表格样式和外观示例
 │   │   └── main.go
 │   ├── cell_advanced/       # 单元格高级功能示例
+│   │   └── main.go
+│   ├── page_settings/       # 页面设置示例 ✨ 新增
+│   │   └── main.go
+│   ├── advanced_features/   # 高级功能综合示例 ✨ 新增
 │   │   └── main.go
 │   ├── basic_usage.go       # 基础使用示例
 │   └── output/             # 示例输出文件目录
@@ -242,6 +255,8 @@ wordZero/
   - [x] 奇偶页不同页眉页脚  
   - [x] 页眉页脚中的页码显示
   - [x] 页眉页脚的格式化支持
+  - [x] 页眉页脚的文本内容设置
+  - [x] 页眉页脚引用和关系管理
 - [x] **文档属性设置** ✨ **新实现**
   - [x] 标题、作者、主题设置
   - [x] 关键字、描述、类别设置
@@ -249,23 +264,41 @@ wordZero/
   - [x] 文档统计信息（字数、段落数等）
   - [x] 自动统计信息更新
 - [x] **列表和编号** ✨ **新实现**
-  - [x] 无序列表（多种项目符号）
+  - [x] 无序列表（多种项目符号：圆点、空心圆、方块、短横线、箭头）
   - [x] 有序列表（数字、字母、罗马数字）
   - [x] 多级列表支持（最多9级）
   - [x] 自定义列表样式
   - [x] 列表编号重新开始
+  - [x] 多级列表批量创建
+  - [x] 列表缩进级别控制
 - [x] **目录生成** ✨ **新实现**
   - [x] 自动生成目录
   - [x] 基于标题样式的目录条目
   - [x] 目录级别控制（1-9级）
   - [x] 页码显示和超链接支持
   - [x] 目录更新功能
+  - [x] 带书签的标题支持
+  - [x] 目录样式自定义
+  - [x] 标题统计和列表功能
 - [x] **脚注和尾注** ✨ **新实现**
   - [x] 脚注添加和管理
   - [x] 尾注添加和管理
-  - [x] 多种编号格式支持
+  - [x] 多种编号格式支持（数字、字母、罗马数字、符号）
   - [x] 脚注/尾注的删除和更新
   - [x] 自定义脚注配置
+  - [x] 脚注位置设置（页面底部、文本下方、节末尾、文档末尾）
+  - [x] 脚注重启规则（连续、每节重启、每页重启）
+  - [x] 脚注数量统计
+- [x] **结构化文档标签（SDT）** ✨ **新实现**
+  - [x] 目录SDT结构创建
+  - [x] SDT属性和内容管理
+  - [x] SDT占位符和文档部件支持
+  - [x] 目录条目SDT嵌套
+- [x] **域字段功能** ✨ **新实现**
+  - [x] 超链接域字段
+  - [x] 页码引用域字段
+  - [x] 域字符和指令文本
+  - [x] 域字段的开始、分隔、结束标记
 - [x] **页码设置**（已集成到页眉页脚功能中）
 
 ## 使用示例
@@ -276,8 +309,16 @@ wordZero/
 - `examples/style_demo/` - 样式系统演示  
 - `examples/table/` - 表格功能演示
 - `examples/table_layout/` - 表格布局和尺寸演示
+- `examples/table_style/` - 表格样式和外观演示
+- `examples/cell_advanced/` - 单元格高级功能演示
 - `examples/formatting/` - 格式化演示
+- `examples/page_settings/` - **页面设置演示** ✨ **新增**
 - `examples/advanced_features/` - **高级功能综合演示** ✨ **新增**
+  - 页眉页脚功能演示
+  - 目录生成和管理演示  
+  - 脚注尾注功能演示
+  - 列表和编号演示
+  - 结构化文档标签演示
 
 运行示例：
 ```bash
@@ -293,8 +334,17 @@ go run ./examples/table/
 # 运行表格布局和尺寸演示
 go run ./examples/table_layout/
 
+# 运行表格样式演示
+go run ./examples/table_style/
+
+# 运行单元格高级功能演示
+go run ./examples/cell_advanced/
+
 # 运行格式化演示  
 go run ./examples/formatting/
+
+# 运行页面设置演示
+go run ./examples/page_settings/
 
 # 运行高级功能综合演示
 go run ./examples/advanced_features/
