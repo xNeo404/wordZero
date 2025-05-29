@@ -93,7 +93,7 @@ package main
 
 import (
     "log"
-    "github.com/yourusername/wordZero/pkg/document"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
 )
 
 func main() {
@@ -115,7 +115,7 @@ func main() {
 ## 安装
 
 ```bash
-go get github.com/yourusername/wordZero
+go get github.com/ZeroHawkeye/wordZero
 ```
 
 ## 使用示例
