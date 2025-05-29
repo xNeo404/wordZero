@@ -5,11 +5,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ZeroHawkeye/wordZero/pkg/style"
 )
 
 // Document 表示一个Word文档
@@ -20,6 +23,8 @@ type Document struct {
 	relationships *Relationships
 	// 内容类型
 	contentTypes *ContentTypes
+	// 样式管理器
+	styleManager *style.StyleManager
 	// 临时存储文档部件
 	parts map[string][]byte
 }
@@ -39,10 +44,11 @@ type Paragraph struct {
 
 // ParagraphProperties 段落属性
 type ParagraphProperties struct {
-	XMLName       xml.Name       `xml:"w:pPr"`
-	Spacing       *Spacing       `xml:"w:spacing,omitempty"`
-	Justification *Justification `xml:"w:jc,omitempty"`
-	Indentation   *Indentation   `xml:"w:ind,omitempty"`
+	XMLName        xml.Name        `xml:"w:pPr"`
+	ParagraphStyle *ParagraphStyle `xml:"w:pStyle,omitempty"`
+	Spacing        *Spacing        `xml:"w:spacing,omitempty"`
+	Justification  *Justification  `xml:"w:jc,omitempty"`
+	Indentation    *Indentation    `xml:"w:ind,omitempty"`
 }
 
 // Spacing 间距设置
@@ -184,31 +190,25 @@ type Indentation struct {
 	Right     string   `xml:"w:right,attr,omitempty"`
 }
 
-// New 创建一个新的Word文档。
-//
-// 返回的文档包含基本的OOXML结构，可以直接添加内容。
-// 文档会自动初始化必要的关系和内容类型。
-//
-// 示例:
-//
-//	doc := document.New()
-//	doc.AddParagraph("Hello, World!")
-//	err := doc.Save("hello.docx")
-//	if err != nil {
-//		log.Fatal(err)
-//	}
+// ParagraphStyle 段落样式引用
+type ParagraphStyle struct {
+	XMLName xml.Name `xml:"w:pStyle"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// New 创建一个新的空文档
 func New() *Document {
-	Infof("创建新文档")
+	Debugf("创建新文档")
+
 	doc := &Document{
 		Body: &Body{
-			Paragraphs: []Paragraph{},
+			Paragraphs: make([]Paragraph, 0),
 		},
-		parts: make(map[string][]byte),
+		styleManager: style.NewStyleManager(),
+		parts:        make(map[string][]byte),
 	}
 
-	// 初始化基础结构
 	doc.initializeStructure()
-
 	return doc
 }
 
@@ -326,6 +326,21 @@ func (d *Document) Save(filename string) error {
 		Errorf("序列化文档失败")
 		return WrapError("serialize_document", err)
 	}
+
+	// 序列化样式
+	if err := d.serializeStyles(); err != nil {
+		Errorf("序列化样式失败")
+		return WrapError("serialize_styles", err)
+	}
+
+	// 序列化内容类型
+	d.serializeContentTypes()
+
+	// 序列化关系
+	d.serializeRelationships()
+
+	// 序列化文档关系
+	d.serializeDocumentRelationships()
 
 	// 写入所有部件
 	for name, data := range d.parts {
@@ -609,6 +624,139 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 	Debugf("向段落添加格式化文本: %s", text)
 }
 
+// AddHeadingParagraph 向文档添加一个标题段落。
+//
+// 参数 text 是标题的文本内容。
+// 参数 level 是标题级别（1-9），对应 Heading1 到 Heading9。
+//
+// 返回新创建段落的指针，可用于进一步设置段落属性。
+// 此方法会自动设置正确的样式引用，确保标题能被 Word 导航窗格识别。
+//
+// 示例:
+//
+//	doc := document.New()
+//
+//	// 添加一级标题
+//	h1 := doc.AddHeadingParagraph("第一章：概述", 1)
+//
+//	// 添加二级标题
+//	h2 := doc.AddHeadingParagraph("1.1 背景", 2)
+//
+//	// 添加三级标题
+//	h3 := doc.AddHeadingParagraph("1.1.1 研究目标", 3)
+func (d *Document) AddHeadingParagraph(text string, level int) *Paragraph {
+	if level < 1 || level > 9 {
+		Debugf("标题级别 %d 超出范围，使用默认级别 1", level)
+		level = 1
+	}
+
+	styleID := fmt.Sprintf("Heading%d", level)
+	Debugf("添加标题段落: %s (级别: %d, 样式: %s)", text, level, styleID)
+
+	// 获取样式管理器中的样式
+	headingStyle := d.styleManager.GetStyle(styleID)
+	if headingStyle == nil {
+		Debugf("警告：找不到样式 %s，使用默认样式", styleID)
+		return d.AddParagraph(text)
+	}
+
+	// 创建运行属性，应用样式中的字符格式
+	runProps := &RunProperties{}
+	if headingStyle.RunPr != nil {
+		if headingStyle.RunPr.Bold != nil {
+			runProps.Bold = &Bold{}
+		}
+		if headingStyle.RunPr.Italic != nil {
+			runProps.Italic = &Italic{}
+		}
+		if headingStyle.RunPr.FontSize != nil {
+			runProps.FontSize = &FontSize{Val: headingStyle.RunPr.FontSize.Val}
+		}
+		if headingStyle.RunPr.Color != nil {
+			runProps.Color = &Color{Val: headingStyle.RunPr.Color.Val}
+		}
+		if headingStyle.RunPr.FontFamily != nil {
+			runProps.FontFamily = &FontFamily{ASCII: headingStyle.RunPr.FontFamily.ASCII}
+		}
+	}
+
+	// 创建段落属性，应用样式中的段落格式
+	paraProps := &ParagraphProperties{
+		ParagraphStyle: &ParagraphStyle{Val: styleID},
+	}
+
+	// 应用样式中的段落格式
+	if headingStyle.ParagraphPr != nil {
+		if headingStyle.ParagraphPr.Spacing != nil {
+			paraProps.Spacing = &Spacing{
+				Before: headingStyle.ParagraphPr.Spacing.Before,
+				After:  headingStyle.ParagraphPr.Spacing.After,
+				Line:   headingStyle.ParagraphPr.Spacing.Line,
+			}
+		}
+		if headingStyle.ParagraphPr.Justification != nil {
+			paraProps.Justification = &Justification{
+				Val: headingStyle.ParagraphPr.Justification.Val,
+			}
+		}
+		if headingStyle.ParagraphPr.Indentation != nil {
+			paraProps.Indentation = &Indentation{
+				FirstLine: headingStyle.ParagraphPr.Indentation.FirstLine,
+				Left:      headingStyle.ParagraphPr.Indentation.Left,
+				Right:     headingStyle.ParagraphPr.Indentation.Right,
+			}
+		}
+	}
+
+	// 创建段落
+	p := Paragraph{
+		Properties: paraProps,
+		Runs: []Run{
+			{
+				Properties: runProps,
+				Text: Text{
+					Content: text,
+					Space:   "preserve",
+				},
+			},
+		},
+	}
+
+	d.Body.Paragraphs = append(d.Body.Paragraphs, p)
+	return &d.Body.Paragraphs[len(d.Body.Paragraphs)-1]
+}
+
+// SetStyle 设置段落的样式。
+//
+// 参数 styleID 是要应用的样式ID，如 "Heading1"、"Normal" 等。
+// 此方法会设置段落的样式引用，确保段落使用指定的样式。
+//
+// 示例:
+//
+//	para := doc.AddParagraph("这是一个段落")
+//	para.SetStyle("Heading2")  // 设置为二级标题样式
+func (p *Paragraph) SetStyle(styleID string) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	p.Properties.ParagraphStyle = &ParagraphStyle{Val: styleID}
+	Debugf("设置段落样式: %s", styleID)
+}
+
+// GetStyleManager 获取文档的样式管理器。
+//
+// 返回文档的样式管理器，可用于访问和管理样式。
+//
+// 示例:
+//
+//	doc := document.New()
+//	styleManager := doc.GetStyleManager()
+//	headingStyle := styleManager.GetStyle("Heading1")
+func (d *Document) GetStyleManager() *style.StyleManager {
+	return d.styleManager
+}
+
 // initializeStructure 初始化文档基础结构
 func (d *Document) initializeStructure() {
 	// 初始化 content types
@@ -620,6 +768,7 @@ func (d *Document) initializeStructure() {
 		},
 		Overrides: []Override{
 			{PartName: "/word/document.xml", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"},
+			{PartName: "/word/styles.xml", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"},
 		},
 	}
 
@@ -638,6 +787,7 @@ func (d *Document) initializeStructure() {
 	// 添加基础部件
 	d.serializeContentTypes()
 	d.serializeRelationships()
+	d.serializeDocumentRelationships()
 }
 
 // parseDocument 解析文档内容
@@ -843,6 +993,74 @@ func (d *Document) serializeRelationships() {
 	d.parts["_rels/.rels"] = append([]byte(xml.Header), data...)
 }
 
+// serializeDocumentRelationships 序列化文档关系
+func (d *Document) serializeDocumentRelationships() {
+	// 创建文档关系
+	docRels := &Relationships{
+		Xmlns: "http://schemas.openxmlformats.org/package/2006/relationships",
+		Relationships: []Relationship{
+			{
+				ID:     "rId1",
+				Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+				Target: "styles.xml",
+			},
+		},
+	}
+
+	data, _ := xml.MarshalIndent(docRels, "", "  ")
+	d.parts["word/_rels/document.xml.rels"] = append([]byte(xml.Header), data...)
+}
+
+// serializeStyles 序列化样式
+func (d *Document) serializeStyles() error {
+	Debugf("开始序列化样式")
+
+	// 创建样式结构，包含完整的命名空间
+	type stylesXML struct {
+		XMLName     xml.Name       `xml:"w:styles"`
+		XmlnsW      string         `xml:"xmlns:w,attr"`
+		XmlnsMC     string         `xml:"xmlns:mc,attr"`
+		XmlnsO      string         `xml:"xmlns:o,attr"`
+		XmlnsR      string         `xml:"xmlns:r,attr"`
+		XmlnsM      string         `xml:"xmlns:m,attr"`
+		XmlnsV      string         `xml:"xmlns:v,attr"`
+		XmlnsW14    string         `xml:"xmlns:w14,attr"`
+		XmlnsW10    string         `xml:"xmlns:w10,attr"`
+		XmlnsSL     string         `xml:"xmlns:sl,attr"`
+		XmlnsWPS    string         `xml:"xmlns:wpsCustomData,attr"`
+		MCIgnorable string         `xml:"mc:Ignorable,attr"`
+		Styles      []*style.Style `xml:"w:style"`
+	}
+
+	doc := stylesXML{
+		XmlnsW:      "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+		XmlnsMC:     "http://schemas.openxmlformats.org/markup-compatibility/2006",
+		XmlnsO:      "urn:schemas-microsoft-com:office:office",
+		XmlnsR:      "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+		XmlnsM:      "http://schemas.openxmlformats.org/officeDocument/2006/math",
+		XmlnsV:      "urn:schemas-microsoft-com:vml",
+		XmlnsW14:    "http://schemas.microsoft.com/office/word/2010/wordml",
+		XmlnsW10:    "urn:schemas-microsoft-com:office:word",
+		XmlnsSL:     "http://schemas.openxmlformats.org/schemaLibrary/2006/main",
+		XmlnsWPS:    "http://www.wps.cn/officeDocument/2013/wpsCustomData",
+		MCIgnorable: "w14",
+		Styles:      d.styleManager.GetAllStyles(),
+	}
+
+	// 序列化为XML
+	data, err := xml.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		Errorf("XML序列化失败: %v", err)
+		return WrapError("marshal_xml", err)
+	}
+
+	// 添加XML声明
+	d.parts["word/styles.xml"] = append([]byte(xml.Header), data...)
+
+	Debugf("样式序列化完成")
+	return nil
+}
+
 // ToBytes 将文档转换为字节数组
 func (d *Document) ToBytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -852,6 +1070,20 @@ func (d *Document) ToBytes() ([]byte, error) {
 	if err := d.serializeDocument(); err != nil {
 		return nil, err
 	}
+
+	// 序列化样式
+	if err := d.serializeStyles(); err != nil {
+		return nil, err
+	}
+
+	// 序列化内容类型
+	d.serializeContentTypes()
+
+	// 序列化关系
+	d.serializeRelationships()
+
+	// 序列化文档关系
+	d.serializeDocumentRelationships()
 
 	// 写入所有部件
 	for name, data := range d.parts {
