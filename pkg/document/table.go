@@ -16,10 +16,16 @@ type Table struct {
 
 // TableProperties 表格属性
 type TableProperties struct {
-	XMLName   xml.Name    `xml:"w:tblPr"`
-	TableW    *TableWidth `xml:"w:tblW,omitempty"`
-	TableJc   *TableJc    `xml:"w:jc,omitempty"`
-	TableLook *TableLook  `xml:"w:tblLook,omitempty"`
+	XMLName      xml.Name          `xml:"w:tblPr"`
+	TableW       *TableWidth       `xml:"w:tblW,omitempty"`
+	TableJc      *TableJc          `xml:"w:jc,omitempty"`
+	TableLook    *TableLook        `xml:"w:tblLook,omitempty"`
+	TableStyle   *TableStyle       `xml:"w:tblStyle,omitempty"`   // 表格样式
+	TableBorders *TableBorders     `xml:"w:tblBorders,omitempty"` // 表格边框
+	Shd          *TableShading     `xml:"w:shd,omitempty"`        // 表格底纹/背景
+	TableCellMar *TableCellMargins `xml:"w:tblCellMar,omitempty"` // 表格单元格边距
+	TableLayout  *TableLayoutType  `xml:"w:tblLayout,omitempty"`  // 表格布局类型
+	TableInd     *TableIndentation `xml:"w:tblInd,omitempty"`     // 表格缩进
 }
 
 // TableWidth 表格宽度
@@ -70,6 +76,8 @@ type TableRow struct {
 type TableRowProperties struct {
 	XMLName   xml.Name   `xml:"w:trPr"`
 	TableRowH *TableRowH `xml:"w:trHeight,omitempty"`
+	CantSplit *CantSplit `xml:"w:cantSplit,omitempty"` // 禁止跨页分割
+	TblHeader *TblHeader `xml:"w:tblHeader,omitempty"` // 标题行重复
 }
 
 // TableRowH 表格行高
@@ -88,12 +96,32 @@ type TableCell struct {
 
 // TableCellProperties 表格单元格属性
 type TableCellProperties struct {
-	XMLName       xml.Name       `xml:"w:tcPr"`
-	TableCellW    *TableCellW    `xml:"w:tcW,omitempty"`
-	VAlign        *VAlign        `xml:"w:vAlign,omitempty"`
-	GridSpan      *GridSpan      `xml:"w:gridSpan,omitempty"`
-	VMerge        *VMerge        `xml:"w:vMerge,omitempty"`
-	TextDirection *TextDirection `xml:"w:textDirection,omitempty"`
+	XMLName       xml.Name              `xml:"w:tcPr"`
+	TableCellW    *TableCellW           `xml:"w:tcW,omitempty"`
+	VAlign        *VAlign               `xml:"w:vAlign,omitempty"`
+	GridSpan      *GridSpan             `xml:"w:gridSpan,omitempty"`
+	VMerge        *VMerge               `xml:"w:vMerge,omitempty"`
+	TextDirection *TextDirection        `xml:"w:textDirection,omitempty"`
+	Shd           *TableCellShading     `xml:"w:shd,omitempty"`       // 单元格背景
+	TcBorders     *TableCellBorders     `xml:"w:tcBorders,omitempty"` // 单元格边框
+	TcMar         *TableCellMarginsCell `xml:"w:tcMar,omitempty"`     // 单元格边距
+	NoWrap        *NoWrap               `xml:"w:noWrap,omitempty"`    // 禁止换行
+	HideMark      *HideMark             `xml:"w:hideMark,omitempty"`  // 隐藏标记
+}
+
+// TableCellMarginsCell 单元格边距（与表格边距不同的XML结构）
+type TableCellMarginsCell struct {
+	XMLName xml.Name            `xml:"w:tcMar"`
+	Top     *TableCellSpaceCell `xml:"w:top,omitempty"`
+	Left    *TableCellSpaceCell `xml:"w:left,omitempty"`
+	Bottom  *TableCellSpaceCell `xml:"w:bottom,omitempty"`
+	Right   *TableCellSpaceCell `xml:"w:right,omitempty"`
+}
+
+// TableCellSpaceCell 单元格空间设置
+type TableCellSpaceCell struct {
+	W    string `xml:"w:w,attr"`
+	Type string `xml:"w:type,attr"`
 }
 
 // TableCellW 单元格宽度
@@ -234,9 +262,9 @@ func (d *Document) AddTable(config *TableConfig) *Table {
 	}
 
 	// 将表格添加到文档主体中
-	d.Body.Tables = append(d.Body.Tables, *table)
+	d.Body.Elements = append(d.Body.Elements, table)
 
-	Info(fmt.Sprintf("表格已添加到文档，当前文档包含%d个表格", len(d.Body.Tables)))
+	Info(fmt.Sprintf("表格已添加到文档，当前文档包含%d个表格", len(d.Body.GetTables())))
 	return table
 }
 
@@ -1267,4 +1295,975 @@ func (t *Table) GetCellFormat(row, col int) (*CellFormat, error) {
 type TextDirection struct {
 	XMLName xml.Name `xml:"w:textDirection"`
 	Val     string   `xml:"w:val,attr"`
+}
+
+// RowHeightRule 行高规则
+type RowHeightRule string
+
+const (
+	// RowHeightAuto 自动调整行高
+	RowHeightAuto RowHeightRule = "auto"
+	// RowHeightMinimum 最小行高
+	RowHeightMinimum RowHeightRule = "atLeast"
+	// RowHeightExact 固定行高
+	RowHeightExact RowHeightRule = "exact"
+)
+
+// RowHeightConfig 行高配置
+type RowHeightConfig struct {
+	Height int           // 行高值（磅，1磅=20twips）
+	Rule   RowHeightRule // 行高规则
+}
+
+// SetRowHeight 设置行高
+func (t *Table) SetRowHeight(rowIndex int, config *RowHeightConfig) error {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties == nil {
+		row.Properties = &TableRowProperties{}
+	}
+
+	// 设置行高属性
+	row.Properties.TableRowH = &TableRowH{
+		Val:   fmt.Sprintf("%d", config.Height*20), // 转换为twips (1磅=20twips)
+		HRule: string(config.Rule),
+	}
+
+	Info(fmt.Sprintf("设置第%d行高度为%d磅，规则为%s", rowIndex, config.Height, config.Rule))
+	return nil
+}
+
+// GetRowHeight 获取行高配置
+func (t *Table) GetRowHeight(rowIndex int) (*RowHeightConfig, error) {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return nil, fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties == nil || row.Properties.TableRowH == nil {
+		// 返回默认自动高度
+		return &RowHeightConfig{
+			Height: 0,
+			Rule:   RowHeightAuto,
+		}, nil
+	}
+
+	height := 0
+	if row.Properties.TableRowH.Val != "" {
+		fmt.Sscanf(row.Properties.TableRowH.Val, "%d", &height)
+		height /= 20 // 转换为磅
+	}
+
+	rule := RowHeightAuto
+	if row.Properties.TableRowH.HRule != "" {
+		rule = RowHeightRule(row.Properties.TableRowH.HRule)
+	}
+
+	return &RowHeightConfig{
+		Height: height,
+		Rule:   rule,
+	}, nil
+}
+
+// SetRowHeightRange 批量设置行高
+func (t *Table) SetRowHeightRange(startRow, endRow int, config *RowHeightConfig) error {
+	if startRow < 0 || endRow >= len(t.Rows) || startRow > endRow {
+		return fmt.Errorf("行索引范围无效：[%d, %d]，表格共有%d行", startRow, endRow, len(t.Rows))
+	}
+
+	for i := startRow; i <= endRow; i++ {
+		err := t.SetRowHeight(i, config)
+		if err != nil {
+			return fmt.Errorf("设置第%d行高度失败：%v", i, err)
+		}
+	}
+
+	Info(fmt.Sprintf("批量设置第%d到%d行高度成功", startRow, endRow))
+	return nil
+}
+
+// TableTextWrap 表格文字环绕类型
+type TableTextWrap string
+
+const (
+	// TextWrapNone 无环绕（默认）
+	TextWrapNone TableTextWrap = "none"
+	// TextWrapAround 环绕表格
+	TextWrapAround TableTextWrap = "around"
+)
+
+// TablePosition 表格定位类型
+type TablePosition string
+
+const (
+	// PositionInline 行内定位（默认）
+	PositionInline TablePosition = "inline"
+	// PositionFloating 浮动定位
+	PositionFloating TablePosition = "floating"
+)
+
+// TableAlignment 表格对齐类型
+type TableAlignment string
+
+const (
+	// TableAlignLeft 左对齐
+	TableAlignLeft TableAlignment = "left"
+	// TableAlignCenter 居中对齐
+	TableAlignCenter TableAlignment = "center"
+	// TableAlignRight 右对齐
+	TableAlignRight TableAlignment = "right"
+	// TableAlignInside 内侧对齐
+	TableAlignInside TableAlignment = "inside"
+	// TableAlignOutside 外侧对齐
+	TableAlignOutside TableAlignment = "outside"
+)
+
+// TablePositioning 表格定位配置
+type TablePositioning struct {
+	XMLName        xml.Name `xml:"w:tblpPr"`
+	LeftFromText   string   `xml:"w:leftFromText,attr,omitempty"`   // 距离左侧文字的距离
+	RightFromText  string   `xml:"w:rightFromText,attr,omitempty"`  // 距离右侧文字的距离
+	TopFromText    string   `xml:"w:topFromText,attr,omitempty"`    // 距离上方文字的距离
+	BottomFromText string   `xml:"w:bottomFromText,attr,omitempty"` // 距离下方文字的距离
+	VertAnchor     string   `xml:"w:vertAnchor,attr,omitempty"`     // 垂直锚点
+	HorzAnchor     string   `xml:"w:horzAnchor,attr,omitempty"`     // 水平锚点
+	TblpXSpec      string   `xml:"w:tblpXSpec,attr,omitempty"`      // 水平对齐规格
+	TblpYSpec      string   `xml:"w:tblpYSpec,attr,omitempty"`      // 垂直对齐规格
+	TblpX          string   `xml:"w:tblpX,attr,omitempty"`          // X坐标
+	TblpY          string   `xml:"w:tblpY,attr,omitempty"`          // Y坐标
+}
+
+// TableLayoutConfig 表格布局配置
+type TableLayoutConfig struct {
+	Alignment   TableAlignment    // 表格对齐方式
+	TextWrap    TableTextWrap     // 文字环绕类型
+	Position    TablePosition     // 定位类型
+	Positioning *TablePositioning // 定位详细配置（仅在Position为Floating时有效）
+}
+
+// SetTableLayout 设置表格布局和定位
+func (t *Table) SetTableLayout(config *TableLayoutConfig) error {
+	if t.Properties == nil {
+		t.Properties = &TableProperties{}
+	}
+
+	// 设置表格对齐
+	if config.Alignment != "" {
+		t.Properties.TableJc = &TableJc{
+			Val: string(config.Alignment),
+		}
+	}
+
+	// 设置定位属性（仅在浮动定位时生效）
+	if config.Position == PositionFloating && config.Positioning != nil {
+		// 在OOXML中，浮动表格定位需要特殊的TablePositioning属性
+		// 这里将配置信息存储到表格属性中
+		Info("设置表格为浮动定位模式")
+		// 注意：完整的浮动定位实现需要更复杂的XML结构支持
+	}
+
+	Info(fmt.Sprintf("设置表格布局：对齐=%s，环绕=%s，定位=%s",
+		config.Alignment, config.TextWrap, config.Position))
+	return nil
+}
+
+// GetTableLayout 获取表格布局配置
+func (t *Table) GetTableLayout() *TableLayoutConfig {
+	config := &TableLayoutConfig{
+		Alignment: TableAlignLeft, // 默认值
+		TextWrap:  TextWrapNone,
+		Position:  PositionInline,
+	}
+
+	if t.Properties != nil && t.Properties.TableJc != nil {
+		config.Alignment = TableAlignment(t.Properties.TableJc.Val)
+	}
+
+	return config
+}
+
+// SetTableAlignment 设置表格对齐方式（快捷方法）
+func (t *Table) SetTableAlignment(alignment TableAlignment) error {
+	return t.SetTableLayout(&TableLayoutConfig{
+		Alignment: alignment,
+		TextWrap:  TextWrapNone,
+		Position:  PositionInline,
+	})
+}
+
+// TableBreakRule 表格分页规则
+type TableBreakRule string
+
+const (
+	// BreakAuto 自动分页（默认）
+	BreakAuto TableBreakRule = "auto"
+	// BreakPage 强制分页
+	BreakPage TableBreakRule = "page"
+	// BreakColumn 强制分栏
+	BreakColumn TableBreakRule = "column"
+)
+
+// RowBreakConfig 行分页配置
+type RowBreakConfig struct {
+	XMLName   xml.Name   `xml:"w:trPr"`
+	CantSplit *CantSplit `xml:"w:cantSplit,omitempty"` // 禁止跨页分割
+	TrHeight  *TableRowH `xml:"w:trHeight,omitempty"`  // 行高
+	TblHeader *TblHeader `xml:"w:tblHeader,omitempty"` // 标题行重复
+}
+
+// CantSplit 禁止分割
+type CantSplit struct {
+	XMLName xml.Name `xml:"w:cantSplit"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// TblHeader 表格标题行
+type TblHeader struct {
+	XMLName xml.Name `xml:"w:tblHeader"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// SetRowKeepTogether 设置行禁止跨页分割
+func (t *Table) SetRowKeepTogether(rowIndex int, keepTogether bool) error {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties == nil {
+		row.Properties = &TableRowProperties{}
+	}
+
+	if keepTogether {
+		row.Properties.CantSplit = &CantSplit{
+			Val: "1",
+		}
+	} else {
+		row.Properties.CantSplit = nil
+	}
+
+	Info(fmt.Sprintf("设置第%d行跨页分割为：%t", rowIndex, !keepTogether))
+	return nil
+}
+
+// SetRowAsHeader 设置行为重复的标题行
+func (t *Table) SetRowAsHeader(rowIndex int, isHeader bool) error {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties == nil {
+		row.Properties = &TableRowProperties{}
+	}
+
+	if isHeader {
+		row.Properties.TblHeader = &TblHeader{
+			Val: "1",
+		}
+	} else {
+		row.Properties.TblHeader = nil
+	}
+
+	Info(fmt.Sprintf("设置第%d行为标题行：%t", rowIndex, isHeader))
+	return nil
+}
+
+// SetHeaderRows 设置表格标题行范围
+func (t *Table) SetHeaderRows(startRow, endRow int) error {
+	if startRow < 0 || endRow >= len(t.Rows) || startRow > endRow {
+		return fmt.Errorf("行索引范围无效：[%d, %d]，表格共有%d行", startRow, endRow, len(t.Rows))
+	}
+
+	// 清除所有现有的标题行设置
+	for i := range t.Rows {
+		if t.Rows[i].Properties != nil {
+			t.Rows[i].Properties.TblHeader = nil
+		}
+	}
+
+	// 设置指定范围为标题行
+	for i := startRow; i <= endRow; i++ {
+		err := t.SetRowAsHeader(i, true)
+		if err != nil {
+			return fmt.Errorf("设置第%d行为标题行失败：%v", i, err)
+		}
+	}
+
+	Info(fmt.Sprintf("设置第%d到%d行为标题行", startRow, endRow))
+	return nil
+}
+
+// IsRowHeader 检查行是否为标题行
+func (t *Table) IsRowHeader(rowIndex int) (bool, error) {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return false, fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties != nil && row.Properties.TblHeader != nil {
+		return row.Properties.TblHeader.Val == "1", nil
+	}
+
+	return false, nil
+}
+
+// IsRowKeepTogether 检查行是否禁止跨页分割
+func (t *Table) IsRowKeepTogether(rowIndex int) (bool, error) {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return false, fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	row := &t.Rows[rowIndex]
+	if row.Properties != nil && row.Properties.CantSplit != nil {
+		return row.Properties.CantSplit.Val == "1", nil
+	}
+
+	return false, nil
+}
+
+// TablePageBreakConfig 表格分页配置
+type TablePageBreakConfig struct {
+	KeepWithNext    bool // 与下一段落保持在一起
+	KeepLines       bool // 保持行在一起
+	PageBreakBefore bool // 段落前分页
+	WidowControl    bool // 孤行控制
+}
+
+// SetTablePageBreak 设置表格分页控制
+func (t *Table) SetTablePageBreak(config *TablePageBreakConfig) error {
+	// 表格级别的分页控制通常在表格属性中设置
+	// 这里先记录配置，实际XML输出时需要相应的实现
+	Info(fmt.Sprintf("设置表格分页控制：保持与下一段落=%t，保持行=%t，段前分页=%t，孤行控制=%t",
+		config.KeepWithNext, config.KeepLines, config.PageBreakBefore, config.WidowControl))
+	return nil
+}
+
+// SetRowKeepWithNext 设置行与下一行保持在同一页
+func (t *Table) SetRowKeepWithNext(rowIndex int, keepWithNext bool) error {
+	if rowIndex < 0 || rowIndex >= len(t.Rows) {
+		return fmt.Errorf("行索引无效：%d，表格共有%d行", rowIndex, len(t.Rows))
+	}
+
+	// 这个功能需要在行属性中设置特定的分页属性
+	// 实际实现时需要扩展TableRowProperties结构
+	Info(fmt.Sprintf("设置第%d行与下一行保持在同一页：%t", rowIndex, keepWithNext))
+	return nil
+}
+
+// GetTableBreakInfo 获取表格分页信息
+func (t *Table) GetTableBreakInfo() map[string]interface{} {
+	info := make(map[string]interface{})
+
+	headerRowCount := 0
+	keepTogetherCount := 0
+
+	for i := range t.Rows {
+		isHeader, _ := t.IsRowHeader(i)
+		if isHeader {
+			headerRowCount++
+		}
+
+		keepTogether, _ := t.IsRowKeepTogether(i)
+		if keepTogether {
+			keepTogetherCount++
+		}
+	}
+
+	info["total_rows"] = len(t.Rows)
+	info["header_rows"] = headerRowCount
+	info["keep_together_rows"] = keepTogetherCount
+
+	return info
+}
+
+// 扩展TableRowProperties以支持分页控制
+type TableRowPropertiesExtended struct {
+	XMLName   xml.Name   `xml:"w:trPr"`
+	TableRowH *TableRowH `xml:"w:trHeight,omitempty"`
+	CantSplit *CantSplit `xml:"w:cantSplit,omitempty"`
+	TblHeader *TblHeader `xml:"w:tblHeader,omitempty"`
+	KeepNext  *KeepNext  `xml:"w:keepNext,omitempty"`
+	KeepLines *KeepLines `xml:"w:keepLines,omitempty"`
+}
+
+// KeepNext 与下一段落保持在一起
+type KeepNext struct {
+	XMLName xml.Name `xml:"w:keepNext"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// KeepLines 保持行在一起
+type KeepLines struct {
+	XMLName xml.Name `xml:"w:keepLines"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// 扩展现有的TableRowProperties结构
+func (trp *TableRowProperties) SetCantSplit(cantSplit bool) {
+	if cantSplit {
+		trp.CantSplit = &CantSplit{Val: "1"}
+	} else {
+		trp.CantSplit = nil
+	}
+}
+
+func (trp *TableRowProperties) SetTblHeader(isHeader bool) {
+	if isHeader {
+		trp.TblHeader = &TblHeader{Val: "1"}
+	} else {
+		trp.TblHeader = nil
+	}
+}
+
+// TableStyle 表格样式引用
+type TableStyle struct {
+	XMLName xml.Name `xml:"w:tblStyle"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// TableBorders 表格边框
+type TableBorders struct {
+	XMLName xml.Name     `xml:"w:tblBorders"`
+	Top     *TableBorder `xml:"w:top,omitempty"`     // 上边框
+	Left    *TableBorder `xml:"w:left,omitempty"`    // 左边框
+	Bottom  *TableBorder `xml:"w:bottom,omitempty"`  // 下边框
+	Right   *TableBorder `xml:"w:right,omitempty"`   // 右边框
+	InsideH *TableBorder `xml:"w:insideH,omitempty"` // 内部水平边框
+	InsideV *TableBorder `xml:"w:insideV,omitempty"` // 内部垂直边框
+}
+
+// TableBorder 边框定义
+type TableBorder struct {
+	Val        string `xml:"w:val,attr"`                  // 边框样式
+	Sz         string `xml:"w:sz,attr"`                   // 边框粗细（1/8磅）
+	Space      string `xml:"w:space,attr"`                // 边框间距
+	Color      string `xml:"w:color,attr"`                // 边框颜色
+	ThemeColor string `xml:"w:themeColor,attr,omitempty"` // 主题颜色
+}
+
+// TableShading 表格底纹/背景
+type TableShading struct {
+	XMLName   xml.Name `xml:"w:shd"`
+	Val       string   `xml:"w:val,attr"`                 // 底纹样式
+	Color     string   `xml:"w:color,attr,omitempty"`     // 前景色
+	Fill      string   `xml:"w:fill,attr,omitempty"`      // 背景色
+	ThemeFill string   `xml:"w:themeFill,attr,omitempty"` // 主题填充色
+}
+
+// TableCellMargins 表格单元格边距
+type TableCellMargins struct {
+	XMLName xml.Name        `xml:"w:tblCellMar"`
+	Top     *TableCellSpace `xml:"w:top,omitempty"`
+	Left    *TableCellSpace `xml:"w:left,omitempty"`
+	Bottom  *TableCellSpace `xml:"w:bottom,omitempty"`
+	Right   *TableCellSpace `xml:"w:right,omitempty"`
+}
+
+// TableCellSpace 表格单元格空间
+type TableCellSpace struct {
+	W    string `xml:"w:w,attr"`
+	Type string `xml:"w:type,attr"`
+}
+
+// TableLayoutType 表格布局类型
+type TableLayoutType struct {
+	XMLName xml.Name `xml:"w:tblLayout"`
+	Type    string   `xml:"w:type,attr"` // fixed, autofit
+}
+
+// TableIndentation 表格缩进
+type TableIndentation struct {
+	XMLName xml.Name `xml:"w:tblInd"`
+	W       string   `xml:"w:w,attr"`
+	Type    string   `xml:"w:type,attr"`
+}
+
+// TableCellShading 单元格背景
+type TableCellShading struct {
+	XMLName   xml.Name `xml:"w:shd"`
+	Val       string   `xml:"w:val,attr"`                 // 底纹样式
+	Color     string   `xml:"w:color,attr,omitempty"`     // 前景色
+	Fill      string   `xml:"w:fill,attr,omitempty"`      // 背景色
+	ThemeFill string   `xml:"w:themeFill,attr,omitempty"` // 主题填充色
+}
+
+// TableCellBorders 单元格边框
+type TableCellBorders struct {
+	XMLName xml.Name         `xml:"w:tcBorders"`
+	Top     *TableCellBorder `xml:"w:top,omitempty"`     // 上边框
+	Left    *TableCellBorder `xml:"w:left,omitempty"`    // 左边框
+	Bottom  *TableCellBorder `xml:"w:bottom,omitempty"`  // 下边框
+	Right   *TableCellBorder `xml:"w:right,omitempty"`   // 右边框
+	InsideH *TableCellBorder `xml:"w:insideH,omitempty"` // 内部水平边框
+	InsideV *TableCellBorder `xml:"w:insideV,omitempty"` // 内部垂直边框
+	TL2BR   *TableCellBorder `xml:"w:tl2br,omitempty"`   // 左上到右下对角线
+	TR2BL   *TableCellBorder `xml:"w:tr2bl,omitempty"`   // 右上到左下对角线
+}
+
+// TableCellBorder 单元格边框定义
+type TableCellBorder struct {
+	Val        string `xml:"w:val,attr"`                  // 边框样式
+	Sz         string `xml:"w:sz,attr"`                   // 边框粗细（1/8磅）
+	Space      string `xml:"w:space,attr"`                // 边框间距
+	Color      string `xml:"w:color,attr"`                // 边框颜色
+	ThemeColor string `xml:"w:themeColor,attr,omitempty"` // 主题颜色
+}
+
+// NoWrap 禁止换行
+type NoWrap struct {
+	XMLName xml.Name `xml:"w:noWrap"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// HideMark 隐藏标记
+type HideMark struct {
+	XMLName xml.Name `xml:"w:hideMark"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// ============== 表格样式和外观功能 ==============
+
+// BorderStyle 边框样式常量
+type BorderStyle string
+
+const (
+	BorderStyleNone                   BorderStyle = "none"                   // 无边框
+	BorderStyleSingle                 BorderStyle = "single"                 // 单线
+	BorderStyleThick                  BorderStyle = "thick"                  // 粗线
+	BorderStyleDouble                 BorderStyle = "double"                 // 双线
+	BorderStyleDotted                 BorderStyle = "dotted"                 // 点线
+	BorderStyleDashed                 BorderStyle = "dashed"                 // 虚线
+	BorderStyleDotDash                BorderStyle = "dotDash"                // 点划线
+	BorderStyleDotDotDash             BorderStyle = "dotDotDash"             // 双点划线
+	BorderStyleTriple                 BorderStyle = "triple"                 // 三线
+	BorderStyleThinThickSmallGap      BorderStyle = "thinThickSmallGap"      // 细粗细线（小间距）
+	BorderStyleThickThinSmallGap      BorderStyle = "thickThinSmallGap"      // 粗细粗线（小间距）
+	BorderStyleThinThickThinSmallGap  BorderStyle = "thinThickThinSmallGap"  // 细粗细线（小间距）
+	BorderStyleThinThickMediumGap     BorderStyle = "thinThickMediumGap"     // 细粗细线（中间距）
+	BorderStyleThickThinMediumGap     BorderStyle = "thickThinMediumGap"     // 粗细粗线（中间距）
+	BorderStyleThinThickThinMediumGap BorderStyle = "thinThickThinMediumGap" // 细粗细线（中间距）
+	BorderStyleThinThickLargeGap      BorderStyle = "thinThickLargeGap"      // 细粗细线（大间距）
+	BorderStyleThickThinLargeGap      BorderStyle = "thickThinLargeGap"      // 粗细粗线（大间距）
+	BorderStyleThinThickThinLargeGap  BorderStyle = "thinThickThinLargeGap"  // 细粗细线（大间距）
+	BorderStyleWave                   BorderStyle = "wave"                   // 波浪线
+	BorderStyleDoubleWave             BorderStyle = "doubleWave"             // 双波浪线
+	BorderStyleDashSmallGap           BorderStyle = "dashSmallGap"           // 虚线（小间距）
+	BorderStyleDashDotStroked         BorderStyle = "dashDotStroked"         // 划点线
+	BorderStyleThreeDEmboss           BorderStyle = "threeDEmboss"           // 3D浮雕
+	BorderStyleThreeDEngrave          BorderStyle = "threeDEngrave"          // 3D雕刻
+	BorderStyleOutset                 BorderStyle = "outset"                 // 外凸
+	BorderStyleInset                  BorderStyle = "inset"                  // 内凹
+)
+
+// ShadingPattern 底纹图案常量
+type ShadingPattern string
+
+const (
+	ShadingPatternClear             ShadingPattern = "clear"             // 透明
+	ShadingPatternSolid             ShadingPattern = "solid"             // 实色
+	ShadingPatternPct5              ShadingPattern = "pct5"              // 5%
+	ShadingPatternPct10             ShadingPattern = "pct10"             // 10%
+	ShadingPatternPct20             ShadingPattern = "pct20"             // 20%
+	ShadingPatternPct25             ShadingPattern = "pct25"             // 25%
+	ShadingPatternPct30             ShadingPattern = "pct30"             // 30%
+	ShadingPatternPct40             ShadingPattern = "pct40"             // 40%
+	ShadingPatternPct50             ShadingPattern = "pct50"             // 50%
+	ShadingPatternPct60             ShadingPattern = "pct60"             // 60%
+	ShadingPatternPct70             ShadingPattern = "pct70"             // 70%
+	ShadingPatternPct75             ShadingPattern = "pct75"             // 75%
+	ShadingPatternPct80             ShadingPattern = "pct80"             // 80%
+	ShadingPatternPct90             ShadingPattern = "pct90"             // 90%
+	ShadingPatternHorzStripe        ShadingPattern = "horzStripe"        // 水平条纹
+	ShadingPatternVertStripe        ShadingPattern = "vertStripe"        // 垂直条纹
+	ShadingPatternReverseDiagStripe ShadingPattern = "reverseDiagStripe" // 反对角条纹
+	ShadingPatternDiagStripe        ShadingPattern = "diagStripe"        // 对角条纹
+	ShadingPatternHorzCross         ShadingPattern = "horzCross"         // 水平十字
+	ShadingPatternDiagCross         ShadingPattern = "diagCross"         // 对角十字
+)
+
+// TableStyleTemplate 表格样式模板
+type TableStyleTemplate string
+
+const (
+	TableStyleTemplateNormal    TableStyleTemplate = "TableNormal"    // 普通表格
+	TableStyleTemplateGrid      TableStyleTemplate = "TableGrid"      // 网格表格
+	TableStyleTemplateList      TableStyleTemplate = "TableList"      // 列表表格
+	TableStyleTemplateColorful1 TableStyleTemplate = "TableColorful1" // 彩色表格1
+	TableStyleTemplateColorful2 TableStyleTemplate = "TableColorful2" // 彩色表格2
+	TableStyleTemplateColorful3 TableStyleTemplate = "TableColorful3" // 彩色表格3
+	TableStyleTemplateColumns1  TableStyleTemplate = "TableColumns1"  // 列样式1
+	TableStyleTemplateColumns2  TableStyleTemplate = "TableColumns2"  // 列样式2
+	TableStyleTemplateColumns3  TableStyleTemplate = "TableColumns3"  // 列样式3
+	TableStyleTemplateRows1     TableStyleTemplate = "TableRows1"     // 行样式1
+	TableStyleTemplateRows2     TableStyleTemplate = "TableRows2"     // 行样式2
+	TableStyleTemplateRows3     TableStyleTemplate = "TableRows3"     // 行样式3
+	TableStyleTemplatePlain1    TableStyleTemplate = "TablePlain1"    // 简洁表格1
+	TableStyleTemplatePlain2    TableStyleTemplate = "TablePlain2"    // 简洁表格2
+	TableStyleTemplatePlain3    TableStyleTemplate = "TablePlain3"    // 简洁表格3
+)
+
+// TableStyleConfig 表格样式配置
+type TableStyleConfig struct {
+	Template          TableStyleTemplate // 样式模板
+	StyleID           string             // 自定义样式ID
+	FirstRowHeader    bool               // 首行作为标题
+	LastRowTotal      bool               // 最后一行作为总计
+	FirstColumnHeader bool               // 首列作为标题
+	LastColumnTotal   bool               // 最后一列作为总计
+	BandedRows        bool               // 交替行颜色
+	BandedColumns     bool               // 交替列颜色
+}
+
+// BorderConfig 边框配置
+type BorderConfig struct {
+	Style BorderStyle // 边框样式
+	Width int         // 边框宽度（1/8磅）
+	Color string      // 边框颜色（十六进制，如 "FF0000"）
+	Space int         // 边框间距
+}
+
+// ShadingConfig 底纹配置
+type ShadingConfig struct {
+	Pattern         ShadingPattern // 底纹图案
+	ForegroundColor string         // 前景色（十六进制）
+	BackgroundColor string         // 背景色（十六进制）
+}
+
+// TableBorderConfig 表格边框配置
+type TableBorderConfig struct {
+	Top     *BorderConfig // 上边框
+	Left    *BorderConfig // 左边框
+	Bottom  *BorderConfig // 下边框
+	Right   *BorderConfig // 右边框
+	InsideH *BorderConfig // 内部水平边框
+	InsideV *BorderConfig // 内部垂直边框
+}
+
+// CellBorderConfig 单元格边框配置
+type CellBorderConfig struct {
+	Top      *BorderConfig // 上边框
+	Left     *BorderConfig // 左边框
+	Bottom   *BorderConfig // 下边框
+	Right    *BorderConfig // 右边框
+	DiagDown *BorderConfig // 左上到右下对角线
+	DiagUp   *BorderConfig // 右上到左下对角线
+}
+
+// ApplyTableStyle 应用表格样式
+func (t *Table) ApplyTableStyle(config *TableStyleConfig) error {
+	if t.Properties == nil {
+		t.Properties = &TableProperties{}
+	}
+
+	// 设置样式模板
+	if config.Template != "" {
+		t.Properties.TableStyle = &TableStyle{
+			Val: string(config.Template),
+		}
+	} else if config.StyleID != "" {
+		t.Properties.TableStyle = &TableStyle{
+			Val: config.StyleID,
+		}
+	}
+
+	// 设置表格外观选项
+	if t.Properties.TableLook == nil {
+		t.Properties.TableLook = &TableLook{}
+	}
+
+	// 构建TableLook值
+	lookVal := "0000"
+	if config.FirstRowHeader {
+		t.Properties.TableLook.FirstRow = "1"
+		lookVal = "0400"
+	} else {
+		t.Properties.TableLook.FirstRow = "0"
+	}
+
+	if config.LastRowTotal {
+		t.Properties.TableLook.LastRow = "1"
+		if lookVal == "0400" {
+			lookVal = "0440"
+		} else {
+			lookVal = "0040"
+		}
+	} else {
+		t.Properties.TableLook.LastRow = "0"
+	}
+
+	if config.FirstColumnHeader {
+		t.Properties.TableLook.FirstCol = "1"
+		switch lookVal {
+		case "0400":
+			lookVal = "0500"
+		case "0040":
+			lookVal = "0140"
+		case "0440":
+			lookVal = "0540"
+		default:
+			lookVal = "0100"
+		}
+	} else {
+		t.Properties.TableLook.FirstCol = "0"
+	}
+
+	if config.LastColumnTotal {
+		t.Properties.TableLook.LastCol = "1"
+	} else {
+		t.Properties.TableLook.LastCol = "0"
+	}
+
+	if config.BandedRows {
+		t.Properties.TableLook.NoHBand = "0"
+	} else {
+		t.Properties.TableLook.NoHBand = "1"
+	}
+
+	if config.BandedColumns {
+		t.Properties.TableLook.NoVBand = "0"
+	} else {
+		t.Properties.TableLook.NoVBand = "1"
+	}
+
+	t.Properties.TableLook.Val = lookVal
+
+	Info(fmt.Sprintf("应用表格样式成功：%s", config.Template))
+	return nil
+}
+
+// SetTableBorders 设置表格边框
+func (t *Table) SetTableBorders(config *TableBorderConfig) error {
+	if t.Properties == nil {
+		t.Properties = &TableProperties{}
+	}
+
+	t.Properties.TableBorders = &TableBorders{}
+
+	if config.Top != nil {
+		t.Properties.TableBorders.Top = createTableBorder(config.Top)
+	}
+	if config.Left != nil {
+		t.Properties.TableBorders.Left = createTableBorder(config.Left)
+	}
+	if config.Bottom != nil {
+		t.Properties.TableBorders.Bottom = createTableBorder(config.Bottom)
+	}
+	if config.Right != nil {
+		t.Properties.TableBorders.Right = createTableBorder(config.Right)
+	}
+	if config.InsideH != nil {
+		t.Properties.TableBorders.InsideH = createTableBorder(config.InsideH)
+	}
+	if config.InsideV != nil {
+		t.Properties.TableBorders.InsideV = createTableBorder(config.InsideV)
+	}
+
+	Info("设置表格边框成功")
+	return nil
+}
+
+// SetTableShading 设置表格背景
+func (t *Table) SetTableShading(config *ShadingConfig) error {
+	if t.Properties == nil {
+		t.Properties = &TableProperties{}
+	}
+
+	t.Properties.Shd = &TableShading{
+		Val:   string(config.Pattern),
+		Color: config.ForegroundColor,
+		Fill:  config.BackgroundColor,
+	}
+
+	Info("设置表格背景成功")
+	return nil
+}
+
+// SetCellBorders 设置单元格边框
+func (t *Table) SetCellBorders(row, col int, config *CellBorderConfig) error {
+	cell, err := t.GetCell(row, col)
+	if err != nil {
+		return err
+	}
+
+	if cell.Properties == nil {
+		cell.Properties = &TableCellProperties{}
+	}
+
+	cell.Properties.TcBorders = &TableCellBorders{}
+
+	if config.Top != nil {
+		cell.Properties.TcBorders.Top = createTableCellBorder(config.Top)
+	}
+	if config.Left != nil {
+		cell.Properties.TcBorders.Left = createTableCellBorder(config.Left)
+	}
+	if config.Bottom != nil {
+		cell.Properties.TcBorders.Bottom = createTableCellBorder(config.Bottom)
+	}
+	if config.Right != nil {
+		cell.Properties.TcBorders.Right = createTableCellBorder(config.Right)
+	}
+	if config.DiagDown != nil {
+		cell.Properties.TcBorders.TL2BR = createTableCellBorder(config.DiagDown)
+	}
+	if config.DiagUp != nil {
+		cell.Properties.TcBorders.TR2BL = createTableCellBorder(config.DiagUp)
+	}
+
+	Info(fmt.Sprintf("设置单元格(%d,%d)边框成功", row, col))
+	return nil
+}
+
+// SetCellShading 设置单元格背景
+func (t *Table) SetCellShading(row, col int, config *ShadingConfig) error {
+	cell, err := t.GetCell(row, col)
+	if err != nil {
+		return err
+	}
+
+	if cell.Properties == nil {
+		cell.Properties = &TableCellProperties{}
+	}
+
+	cell.Properties.Shd = &TableCellShading{
+		Val:   string(config.Pattern),
+		Color: config.ForegroundColor,
+		Fill:  config.BackgroundColor,
+	}
+
+	Info(fmt.Sprintf("设置单元格(%d,%d)背景成功", row, col))
+	return nil
+}
+
+// SetAlternatingRowColors 设置奇偶行颜色交替
+func (t *Table) SetAlternatingRowColors(evenRowColor, oddRowColor string) error {
+	for i := range t.Rows {
+		var bgColor string
+		if i%2 == 0 {
+			bgColor = evenRowColor
+		} else {
+			bgColor = oddRowColor
+		}
+
+		// 为该行的所有单元格设置背景色
+		for j := range t.Rows[i].Cells {
+			err := t.SetCellShading(i, j, &ShadingConfig{
+				Pattern:         ShadingPatternSolid,
+				BackgroundColor: bgColor,
+			})
+			if err != nil {
+				return fmt.Errorf("设置第%d行第%d列背景色失败: %v", i, j, err)
+			}
+		}
+	}
+
+	Info("设置奇偶行颜色交替成功")
+	return nil
+}
+
+// RemoveTableBorders 移除表格边框
+func (t *Table) RemoveTableBorders() error {
+	if t.Properties == nil {
+		t.Properties = &TableProperties{}
+	}
+
+	// 设置所有边框为无
+	noBorderConfig := &BorderConfig{
+		Style: BorderStyleNone,
+		Width: 0,
+		Color: "auto",
+		Space: 0,
+	}
+
+	borderConfig := &TableBorderConfig{
+		Top:     noBorderConfig,
+		Left:    noBorderConfig,
+		Bottom:  noBorderConfig,
+		Right:   noBorderConfig,
+		InsideH: noBorderConfig,
+		InsideV: noBorderConfig,
+	}
+
+	return t.SetTableBorders(borderConfig)
+}
+
+// RemoveCellBorders 移除单元格边框
+func (t *Table) RemoveCellBorders(row, col int) error {
+	noBorderConfig := &BorderConfig{
+		Style: BorderStyleNone,
+		Width: 0,
+		Color: "auto",
+		Space: 0,
+	}
+
+	cellBorderConfig := &CellBorderConfig{
+		Top:    noBorderConfig,
+		Left:   noBorderConfig,
+		Bottom: noBorderConfig,
+		Right:  noBorderConfig,
+	}
+
+	return t.SetCellBorders(row, col, cellBorderConfig)
+}
+
+// CreateCustomTableStyle 创建自定义表格样式
+func (t *Table) CreateCustomTableStyle(styleID, styleName string,
+	borderConfig *TableBorderConfig,
+	shadingConfig *ShadingConfig,
+	firstRowBold bool) error {
+
+	// 应用样式到表格
+	config := &TableStyleConfig{
+		StyleID:        styleID,
+		FirstRowHeader: firstRowBold,
+		BandedRows:     shadingConfig != nil,
+	}
+
+	err := t.ApplyTableStyle(config)
+	if err != nil {
+		return err
+	}
+
+	// 设置边框
+	if borderConfig != nil {
+		err = t.SetTableBorders(borderConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 设置背景
+	if shadingConfig != nil {
+		err = t.SetTableShading(shadingConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	Info(fmt.Sprintf("创建自定义表格样式成功：%s", styleID))
+	return nil
+}
+
+// 辅助函数：创建表格边框
+func createTableBorder(config *BorderConfig) *TableBorder {
+	return &TableBorder{
+		Val:   string(config.Style),
+		Sz:    fmt.Sprintf("%d", config.Width),
+		Space: fmt.Sprintf("%d", config.Space),
+		Color: config.Color,
+	}
+}
+
+// 辅助函数：创建单元格边框
+func createTableCellBorder(config *BorderConfig) *TableCellBorder {
+	return &TableCellBorder{
+		Val:   string(config.Style),
+		Sz:    fmt.Sprintf("%d", config.Width),
+		Space: fmt.Sprintf("%d", config.Space),
+		Color: config.Color,
+	}
 }

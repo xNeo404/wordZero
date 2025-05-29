@@ -66,7 +66,7 @@ func main() {
 	p5.SetAlignment(document.AlignRight)
 
 	// 保存文档
-	err := doc.Save("../output/formatted_document.docx")
+	err := doc.Save("examples/output/formatted_document.docx")
 	if err != nil {
 		log.Fatalf("保存文档失败: %v", err)
 	}

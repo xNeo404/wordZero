@@ -111,7 +111,7 @@ doc.Save("example.docx")`
 	stylesInfo.SetStyle(style.StyleNormal)
 
 	// 确保输出目录存在
-	outputFile := "../output/basic_example.docx"
+	outputFile := "examples/output/basic_example.docx"
 	outputDir := filepath.Dir(outputFile)
 
 	fmt.Printf("📁 检查输出目录: %s\n", outputDir)

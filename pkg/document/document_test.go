@@ -25,8 +25,8 @@ func TestNewDocument(t *testing.T) {
 	}
 
 	// 验证初始状态
-	if len(doc.Body.Paragraphs) != 0 {
-		t.Errorf("Expected 0 paragraphs, got %d", len(doc.Body.Paragraphs))
+	if len(doc.Body.GetParagraphs()) != 0 {
+		t.Errorf("Expected 0 paragraphs, got %d", len(doc.Body.GetParagraphs()))
 	}
 
 	// 验证样式管理器初始化
@@ -44,8 +44,8 @@ func TestAddParagraph(t *testing.T) {
 	para := doc.AddParagraph(text)
 
 	// 验证段落添加
-	if len(doc.Body.Paragraphs) != 1 {
-		t.Errorf("Expected 1 paragraph, got %d", len(doc.Body.Paragraphs))
+	if len(doc.Body.GetParagraphs()) != 1 {
+		t.Errorf("Expected 1 paragraph, got %d", len(doc.Body.GetParagraphs()))
 	}
 
 	// 验证段落内容
@@ -58,7 +58,8 @@ func TestAddParagraph(t *testing.T) {
 	}
 
 	// 验证返回的指针是否正确
-	if &doc.Body.Paragraphs[0] != para {
+	paragraphs := doc.Body.GetParagraphs()
+	if paragraphs[0] != para {
 		t.Error("Returned paragraph pointer is incorrect")
 	}
 }
@@ -135,7 +136,7 @@ func TestAddFormattedParagraph(t *testing.T) {
 	para := doc.AddFormattedParagraph(text, format)
 
 	// 验证段落添加
-	if len(doc.Body.Paragraphs) != 1 {
+	if len(doc.Body.GetParagraphs()) != 1 {
 		t.Error("Failed to add formatted paragraph")
 	}
 
@@ -379,8 +380,8 @@ func TestComplexDocument(t *testing.T) {
 	mixed.AddFormattedText("文本。", nil)
 
 	// 验证文档结构
-	if len(doc.Body.Paragraphs) != 6 {
-		t.Errorf("Expected 6 paragraphs, got %d", len(doc.Body.Paragraphs))
+	if len(doc.Body.GetParagraphs()) != 6 {
+		t.Errorf("Expected 6 paragraphs, got %d", len(doc.Body.GetParagraphs()))
 	}
 
 	// 保存并验证
@@ -416,13 +417,13 @@ func TestDocumentOpen(t *testing.T) {
 	}
 
 	// 验证文档内容
-	if len(loadedDoc.Body.Paragraphs) != 3 {
-		t.Errorf("Expected 3 paragraphs, got %d", len(loadedDoc.Body.Paragraphs))
+	if len(loadedDoc.Body.GetParagraphs()) != 3 {
+		t.Errorf("Expected 3 paragraphs, got %d", len(loadedDoc.Body.GetParagraphs()))
 	}
 
 	// 验证第一段内容
-	if len(loadedDoc.Body.Paragraphs[0].Runs) > 0 {
-		content := loadedDoc.Body.Paragraphs[0].Runs[0].Text.Content
+	if len(loadedDoc.Body.GetParagraphs()[0].Runs) > 0 {
+		content := loadedDoc.Body.GetParagraphs()[0].Runs[0].Text.Content
 		if content != "第一段" {
 			t.Errorf("Expected '第一段', got '%s'", content)
 		}
@@ -565,8 +566,8 @@ func TestMemoryUsage(t *testing.T) {
 		doc.AddParagraph("内存测试段落")
 	}
 
-	if len(doc.Body.Paragraphs) != numParagraphs {
-		t.Errorf("Expected %d paragraphs, got %d", numParagraphs, len(doc.Body.Paragraphs))
+	if len(doc.Body.GetParagraphs()) != numParagraphs {
+		t.Errorf("Expected %d paragraphs, got %d", numParagraphs, len(doc.Body.GetParagraphs()))
 	}
 
 	// 测试保存大文档

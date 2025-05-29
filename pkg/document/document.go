@@ -31,9 +31,26 @@ type Document struct {
 
 // Body 表示文档主体
 type Body struct {
-	XMLName    xml.Name    `xml:"w:body"`
-	Paragraphs []Paragraph `xml:"w:p"`
-	Tables     []Table     `xml:"w:tbl"`
+	XMLName  xml.Name      `xml:"w:body"`
+	Elements []interface{} `xml:"-"` // 不序列化此字段，使用自定义方法
+}
+
+// MarshalXML 自定义XML序列化，按照元素顺序输出
+func (b *Body) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	// 开始元素
+	if err := e.EncodeToken(start); err != nil {
+		return err
+	}
+
+	// 序列化每个元素，保持顺序
+	for _, element := range b.Elements {
+		if err := e.Encode(element); err != nil {
+			return err
+		}
+	}
+
+	// 结束元素
+	return e.EncodeToken(start.End())
 }
 
 // BodyElement 文档主体元素接口
@@ -218,7 +235,7 @@ func New() *Document {
 
 	doc := &Document{
 		Body: &Body{
-			Paragraphs: make([]Paragraph, 0),
+			Elements: make([]interface{}, 0),
 		},
 		styleManager: style.NewStyleManager(),
 		parts:        make(map[string][]byte),
@@ -282,6 +299,9 @@ func Open(filename string) (*Document, error) {
 		doc.parts[file.Name] = data
 		Debugf("已读取文件部件: %s (%d 字节)", file.Name, len(data))
 	}
+
+	// 初始化样式管理器
+	doc.styleManager = style.NewStyleManager()
 
 	// 解析主文档
 	if err := doc.parseDocument(); err != nil {
@@ -400,7 +420,7 @@ func (d *Document) Save(filename string) error {
 //	})
 func (d *Document) AddParagraph(text string) *Paragraph {
 	Debugf("添加段落: %s", text)
-	p := Paragraph{
+	p := &Paragraph{
 		Runs: []Run{
 			{
 				Text: Text{
@@ -411,8 +431,8 @@ func (d *Document) AddParagraph(text string) *Paragraph {
 		},
 	}
 
-	d.Body.Paragraphs = append(d.Body.Paragraphs, p)
-	return &d.Body.Paragraphs[len(d.Body.Paragraphs)-1]
+	d.Body.Elements = append(d.Body.Elements, p)
+	return p
 }
 
 // AddFormattedParagraph 向文档添加一个格式化段落。
@@ -468,7 +488,7 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 		}
 	}
 
-	p := Paragraph{
+	p := &Paragraph{
 		Runs: []Run{
 			{
 				Properties: runProps,
@@ -480,8 +500,8 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 		},
 	}
 
-	d.Body.Paragraphs = append(d.Body.Paragraphs, p)
-	return &d.Body.Paragraphs[len(d.Body.Paragraphs)-1]
+	d.Body.Elements = append(d.Body.Elements, p)
+	return p
 }
 
 // SetAlignment 设置段落的对齐方式。
@@ -725,7 +745,7 @@ func (d *Document) AddHeadingParagraph(text string, level int) *Paragraph {
 	}
 
 	// 创建段落
-	p := Paragraph{
+	p := &Paragraph{
 		Properties: paraProps,
 		Runs: []Run{
 			{
@@ -738,8 +758,8 @@ func (d *Document) AddHeadingParagraph(text string, level int) *Paragraph {
 		},
 	}
 
-	d.Body.Paragraphs = append(d.Body.Paragraphs, p)
-	return &d.Body.Paragraphs[len(d.Body.Paragraphs)-1]
+	d.Body.Elements = append(d.Body.Elements, p)
+	return p
 }
 
 // SetStyle 设置段落的样式。
@@ -824,7 +844,11 @@ func (d *Document) parseDocument() error {
 			Paragraphs []struct {
 				XMLName    xml.Name `xml:"p"`
 				Properties *struct {
-					XMLName xml.Name `xml:"pPr"`
+					XMLName        xml.Name `xml:"pPr"`
+					ParagraphStyle *struct {
+						XMLName xml.Name `xml:"pStyle"`
+						Val     string   `xml:"val,attr"`
+					} `xml:"pStyle,omitempty"`
 					Spacing *struct {
 						XMLName xml.Name `xml:"spacing"`
 						Before  string   `xml:"before,attr,omitempty"`
@@ -882,17 +906,23 @@ func (d *Document) parseDocument() error {
 
 	// 转换为内部结构
 	d.Body = &Body{
-		Paragraphs: make([]Paragraph, len(doc.Body.Paragraphs)),
+		Elements: make([]interface{}, len(doc.Body.Paragraphs)),
 	}
 
 	for i, p := range doc.Body.Paragraphs {
-		paragraph := Paragraph{
+		paragraph := &Paragraph{
 			Runs: make([]Run, len(p.Runs)),
 		}
 
-		// 复制段落属性
+		// 转换段落属性
 		if p.Properties != nil {
 			paragraph.Properties = &ParagraphProperties{}
+
+			if p.Properties.ParagraphStyle != nil {
+				paragraph.Properties.ParagraphStyle = &ParagraphStyle{
+					Val: p.Properties.ParagraphStyle.Val,
+				}
+			}
 
 			if p.Properties.Spacing != nil {
 				paragraph.Properties.Spacing = &Spacing{
@@ -917,16 +947,13 @@ func (d *Document) parseDocument() error {
 			}
 		}
 
-		// 复制运行和运行属性
 		for j, r := range p.Runs {
 			run := Run{
 				Text: Text{
-					Space:   r.Text.Space,
 					Content: r.Text.Content,
 				},
 			}
 
-			// 复制运行属性
 			if r.Properties != nil {
 				run.Properties = &RunProperties{}
 
@@ -960,10 +987,10 @@ func (d *Document) parseDocument() error {
 			paragraph.Runs[j] = run
 		}
 
-		d.Body.Paragraphs[i] = paragraph
+		d.Body.Elements[i] = paragraph
 	}
 
-	Infof("解析完成，共 %d 个段落", len(d.Body.Paragraphs))
+	Infof("解析完成，共 %d 个元素", len(d.Body.Elements))
 	return nil
 }
 
@@ -975,12 +1002,12 @@ func (d *Document) serializeDocument() error {
 	type documentXML struct {
 		XMLName xml.Name `xml:"w:document"`
 		Xmlns   string   `xml:"xmlns:w,attr"`
-		Body    Body     `xml:"w:body"`
+		Body    *Body    `xml:"w:body"`
 	}
 
 	doc := documentXML{
 		Xmlns: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-		Body:  *d.Body,
+		Body:  d.Body,
 	}
 
 	// 序列化为XML
@@ -1117,4 +1144,31 @@ func (d *Document) ToBytes() ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+// GetParagraphs 获取所有段落
+func (b *Body) GetParagraphs() []*Paragraph {
+	paragraphs := make([]*Paragraph, 0)
+	for _, element := range b.Elements {
+		if p, ok := element.(*Paragraph); ok {
+			paragraphs = append(paragraphs, p)
+		}
+	}
+	return paragraphs
+}
+
+// GetTables 获取所有表格
+func (b *Body) GetTables() []*Table {
+	tables := make([]*Table, 0)
+	for _, element := range b.Elements {
+		if t, ok := element.(*Table); ok {
+			tables = append(tables, t)
+		}
+	}
+	return tables
+}
+
+// AddElement 添加元素到文档主体
+func (b *Body) AddElement(element interface{}) {
+	b.Elements = append(b.Elements, element)
 }

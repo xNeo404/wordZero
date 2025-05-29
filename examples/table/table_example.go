@@ -206,7 +206,7 @@ func demonstrateTableCopyAndClear(doc *document.Document) {
 		copiedTable.SetCellText(1, 1, "复制4")
 
 		// 将复制的表格添加到文档
-		doc.Body.Tables = append(doc.Body.Tables, *copiedTable)
+		doc.Body.AddElement(copiedTable)
 		fmt.Println("   复制的表格已添加到文档")
 	}
 

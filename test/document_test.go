@@ -50,11 +50,12 @@ func TestOpenDocument(t *testing.T) {
 	}
 
 	// 验证内容
-	if len(openedDoc.Body.Paragraphs) != 1 {
-		t.Fatalf("Expected 1 paragraph, got %d", len(openedDoc.Body.Paragraphs))
+	paragraphs := openedDoc.Body.GetParagraphs()
+	if len(paragraphs) != 1 {
+		t.Fatalf("Expected 1 paragraph, got %d", len(paragraphs))
 	}
 
-	if openedDoc.Body.Paragraphs[0].Runs[0].Text.Content != "Test paragraph" {
+	if paragraphs[0].Runs[0].Text.Content != "Test paragraph" {
 		t.Fatalf("Paragraph content mismatch")
 	}
 

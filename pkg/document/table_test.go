@@ -100,15 +100,15 @@ func TestAddTable(t *testing.T) {
 		Width: 6000,
 	}
 
-	initialTableCount := len(doc.Body.Tables)
+	initialTableCount := len(doc.Body.GetTables())
 	table := doc.AddTable(config)
 
 	if table == nil {
 		t.Fatal("添加表格失败")
 	}
 
-	if len(doc.Body.Tables) != initialTableCount+1 {
-		t.Errorf("期望表格数量%d，实际%d", initialTableCount+1, len(doc.Body.Tables))
+	if len(doc.Body.GetTables()) != initialTableCount+1 {
+		t.Errorf("期望表格数量%d，实际%d", initialTableCount+1, len(doc.Body.GetTables()))
 	}
 }
 
@@ -1219,5 +1219,294 @@ func TestTextDirectionConstants(t *testing.T) {
 		if string(direction) != expectedValues[i] {
 			t.Errorf("文字方向常量值不匹配，期望: %s，实际: %s", expectedValues[i], string(direction))
 		}
+	}
+}
+
+// TestRowHeight 测试行高设置功能
+func TestRowHeight(t *testing.T) {
+	doc := New()
+
+	config := &TableConfig{
+		Rows:  3,
+		Cols:  2,
+		Width: 4000,
+	}
+
+	table := doc.CreateTable(config)
+	if table == nil {
+		t.Fatal("创建表格失败")
+	}
+
+	// 测试设置固定行高
+	heightConfig := &RowHeightConfig{
+		Height: 30,
+		Rule:   RowHeightExact,
+	}
+
+	err := table.SetRowHeight(0, heightConfig)
+	if err != nil {
+		t.Errorf("设置行高失败: %v", err)
+	}
+
+	// 测试获取行高
+	retrievedConfig, err := table.GetRowHeight(0)
+	if err != nil {
+		t.Errorf("获取行高失败: %v", err)
+	}
+
+	if retrievedConfig.Height != 30 {
+		t.Errorf("期望行高30，实际%d", retrievedConfig.Height)
+	}
+
+	if retrievedConfig.Rule != RowHeightExact {
+		t.Errorf("期望行高规则%s，实际%s", RowHeightExact, retrievedConfig.Rule)
+	}
+
+	// 测试批量设置行高
+	batchConfig := &RowHeightConfig{
+		Height: 25,
+		Rule:   RowHeightMinimum,
+	}
+
+	err = table.SetRowHeightRange(1, 2, batchConfig)
+	if err != nil {
+		t.Errorf("批量设置行高失败: %v", err)
+	}
+
+	// 验证批量设置结果
+	for i := 1; i <= 2; i++ {
+		config, err := table.GetRowHeight(i)
+		if err != nil {
+			t.Errorf("获取第%d行高度失败: %v", i, err)
+		}
+		if config.Height != 25 {
+			t.Errorf("第%d行期望高度25，实际%d", i, config.Height)
+		}
+		if config.Rule != RowHeightMinimum {
+			t.Errorf("第%d行期望规则%s，实际%s", i, RowHeightMinimum, config.Rule)
+		}
+	}
+
+	// 测试无效索引
+	err = table.SetRowHeight(10, heightConfig)
+	if err == nil {
+		t.Error("期望设置无效行索引失败，但成功了")
+	}
+
+	_, err = table.GetRowHeight(10)
+	if err == nil {
+		t.Error("期望获取无效行索引失败，但成功了")
+	}
+}
+
+// TestTableLayout 测试表格布局和定位功能
+func TestTableLayout(t *testing.T) {
+	doc := New()
+
+	config := &TableConfig{
+		Rows:  2,
+		Cols:  2,
+		Width: 4000,
+	}
+
+	table := doc.CreateTable(config)
+	if table == nil {
+		t.Fatal("创建表格失败")
+	}
+
+	// 测试设置表格布局
+	layoutConfig := &TableLayoutConfig{
+		Alignment: TableAlignCenter,
+		TextWrap:  TextWrapNone,
+		Position:  PositionInline,
+	}
+
+	err := table.SetTableLayout(layoutConfig)
+	if err != nil {
+		t.Errorf("设置表格布局失败: %v", err)
+	}
+
+	// 测试获取表格布局
+	retrievedLayout := table.GetTableLayout()
+	if retrievedLayout.Alignment != TableAlignCenter {
+		t.Errorf("期望对齐方式%s，实际%s", TableAlignCenter, retrievedLayout.Alignment)
+	}
+
+	// 测试快捷方法设置对齐
+	err = table.SetTableAlignment(TableAlignRight)
+	if err != nil {
+		t.Errorf("设置表格对齐失败: %v", err)
+	}
+
+	retrievedLayout = table.GetTableLayout()
+	if retrievedLayout.Alignment != TableAlignRight {
+		t.Errorf("期望对齐方式%s，实际%s", TableAlignRight, retrievedLayout.Alignment)
+	}
+}
+
+// TestTablePageBreak 测试表格分页控制功能
+func TestTablePageBreak(t *testing.T) {
+	doc := New()
+
+	config := &TableConfig{
+		Rows:  4,
+		Cols:  2,
+		Width: 4000,
+	}
+
+	table := doc.CreateTable(config)
+	if table == nil {
+		t.Fatal("创建表格失败")
+	}
+
+	// 测试设置行禁止跨页分割
+	err := table.SetRowKeepTogether(0, true)
+	if err != nil {
+		t.Errorf("设置行禁止跨页分割失败: %v", err)
+	}
+
+	// 测试检查行是否禁止跨页分割
+	keepTogether, err := table.IsRowKeepTogether(0)
+	if err != nil {
+		t.Errorf("检查行跨页分割设置失败: %v", err)
+	}
+	if !keepTogether {
+		t.Error("期望行禁止跨页分割为true，实际为false")
+	}
+
+	// 测试设置标题行
+	err = table.SetRowAsHeader(0, true)
+	if err != nil {
+		t.Errorf("设置标题行失败: %v", err)
+	}
+
+	// 测试检查是否为标题行
+	isHeader, err := table.IsRowHeader(0)
+	if err != nil {
+		t.Errorf("检查标题行设置失败: %v", err)
+	}
+	if !isHeader {
+		t.Error("期望第0行为标题行，实际不是")
+	}
+
+	// 测试设置标题行范围
+	err = table.SetHeaderRows(0, 1)
+	if err != nil {
+		t.Errorf("设置标题行范围失败: %v", err)
+	}
+
+	// 验证标题行范围设置
+	for i := 0; i <= 1; i++ {
+		isHeader, err := table.IsRowHeader(i)
+		if err != nil {
+			t.Errorf("检查第%d行标题行设置失败: %v", i, err)
+		}
+		if !isHeader {
+			t.Errorf("期望第%d行为标题行，实际不是", i)
+		}
+	}
+
+	// 测试表格分页信息
+	breakInfo := table.GetTableBreakInfo()
+	if breakInfo["total_rows"] != 4 {
+		t.Errorf("期望总行数4，实际%v", breakInfo["total_rows"])
+	}
+	if breakInfo["header_rows"] != 2 {
+		t.Errorf("期望标题行数2，实际%v", breakInfo["header_rows"])
+	}
+
+	// 测试表格分页配置
+	pageBreakConfig := &TablePageBreakConfig{
+		KeepWithNext:    true,
+		KeepLines:       true,
+		PageBreakBefore: false,
+		WidowControl:    true,
+	}
+
+	err = table.SetTablePageBreak(pageBreakConfig)
+	if err != nil {
+		t.Errorf("设置表格分页配置失败: %v", err)
+	}
+
+	// 测试行与下一行保持在同一页
+	err = table.SetRowKeepWithNext(1, true)
+	if err != nil {
+		t.Errorf("设置行与下一行保持在同一页失败: %v", err)
+	}
+
+	// 测试无效索引
+	err = table.SetRowKeepTogether(10, true)
+	if err == nil {
+		t.Error("期望设置无效行索引失败，但成功了")
+	}
+
+	err = table.SetRowAsHeader(10, true)
+	if err == nil {
+		t.Error("期望设置无效行索引失败，但成功了")
+	}
+
+	_, err = table.IsRowHeader(10)
+	if err == nil {
+		t.Error("期望检查无效行索引失败，但成功了")
+	}
+
+	_, err = table.IsRowKeepTogether(10)
+	if err == nil {
+		t.Error("期望检查无效行索引失败，但成功了")
+	}
+}
+
+// TestRowHeightConstants 测试行高规则常量
+func TestRowHeightConstants(t *testing.T) {
+	// 验证行高规则常量定义正确
+	if RowHeightAuto != "auto" {
+		t.Errorf("期望RowHeightAuto为'auto'，实际'%s'", RowHeightAuto)
+	}
+	if RowHeightMinimum != "atLeast" {
+		t.Errorf("期望RowHeightMinimum为'atLeast'，实际'%s'", RowHeightMinimum)
+	}
+	if RowHeightExact != "exact" {
+		t.Errorf("期望RowHeightExact为'exact'，实际'%s'", RowHeightExact)
+	}
+}
+
+// TestTableAlignmentConstants 测试表格对齐常量
+func TestTableAlignmentConstants(t *testing.T) {
+	// 验证表格对齐常量定义正确
+	if TableAlignLeft != "left" {
+		t.Errorf("期望TableAlignLeft为'left'，实际'%s'", TableAlignLeft)
+	}
+	if TableAlignCenter != "center" {
+		t.Errorf("期望TableAlignCenter为'center'，实际'%s'", TableAlignCenter)
+	}
+	if TableAlignRight != "right" {
+		t.Errorf("期望TableAlignRight为'right'，实际'%s'", TableAlignRight)
+	}
+}
+
+// TestTableRowPropertiesExtensions 测试TableRowProperties扩展方法
+func TestTableRowPropertiesExtensions(t *testing.T) {
+	trp := &TableRowProperties{}
+
+	// 测试SetCantSplit方法
+	trp.SetCantSplit(true)
+	if trp.CantSplit == nil || trp.CantSplit.Val != "1" {
+		t.Error("设置CantSplit失败")
+	}
+
+	trp.SetCantSplit(false)
+	if trp.CantSplit != nil {
+		t.Error("清除CantSplit失败")
+	}
+
+	// 测试SetTblHeader方法
+	trp.SetTblHeader(true)
+	if trp.TblHeader == nil || trp.TblHeader.Val != "1" {
+		t.Error("设置TblHeader失败")
+	}
+
+	trp.SetTblHeader(false)
+	if trp.TblHeader != nil {
+		t.Error("清除TblHeader失败")
 	}
 }

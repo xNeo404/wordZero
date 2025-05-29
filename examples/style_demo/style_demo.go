@@ -36,7 +36,7 @@ func main() {
 	demonstrateStyleManagement(quickAPI)
 
 	// 保存文档
-	outputFile := "../output/styled_document_demo.docx"
+	outputFile := "examples/output/styled_document_demo.docx"
 	err := doc.Save(outputFile)
 	if err != nil {
 		log.Fatalf("保存文档失败: %v", err)

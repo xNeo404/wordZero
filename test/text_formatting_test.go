@@ -30,15 +30,16 @@ func TestTextFormatting(t *testing.T) {
 	}
 
 	// 检查段落是否被正确添加
-	if len(doc.Body.Paragraphs) != 1 {
-		t.Errorf("预期1个段落，但得到了 %d 个", len(doc.Body.Paragraphs))
+	paragraphs := doc.Body.GetParagraphs()
+	if len(paragraphs) != 1 {
+		t.Errorf("预期1个段落，但得到了 %d 个", len(paragraphs))
 	}
 
 	// 检查运行属性
-	if len(doc.Body.Paragraphs[0].Runs) == 0 {
+	if len(paragraphs[0].Runs) == 0 {
 		t.Error("段落中没有运行")
 	} else {
-		run := doc.Body.Paragraphs[0].Runs[0]
+		run := paragraphs[0].Runs[0]
 		if run.Properties == nil {
 			t.Error("运行属性为空")
 		} else {
@@ -199,12 +200,13 @@ func TestDocumentSaveAndOpen(t *testing.T) {
 	}
 
 	// 验证内容
-	if len(openedDoc.Body.Paragraphs) != 1 {
-		t.Errorf("预期1个段落，但得到了 %d 个", len(openedDoc.Body.Paragraphs))
+	paragraphs := openedDoc.Body.GetParagraphs()
+	if len(paragraphs) != 1 {
+		t.Errorf("预期1个段落，但得到了 %d 个", len(paragraphs))
 	}
 
-	if len(openedDoc.Body.Paragraphs) > 0 {
-		para := openedDoc.Body.Paragraphs[0]
+	if len(paragraphs) > 0 {
+		para := paragraphs[0]
 
 		// 检查对齐方式
 		if para.Properties == nil || para.Properties.Justification == nil {

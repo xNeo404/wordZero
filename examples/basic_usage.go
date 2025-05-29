@@ -26,7 +26,7 @@ func main() {
 	doc.AddParagraph("• 打开现有文档")
 
 	// 保存文档
-	outputFile := "output/example_document.docx"
+	outputFile := "examples/output/example_document.docx"
 	err := doc.Save(outputFile)
 	if err != nil {
 		log.Fatalf("保存文档失败: %v", err)
@@ -41,11 +41,11 @@ func main() {
 		log.Fatalf("打开文档失败: %v", err)
 	}
 
-	fmt.Printf("文档包含 %d 个段落\n", len(openedDoc.Body.Paragraphs))
+	fmt.Printf("文档包含 %d 个段落\n", len(openedDoc.Body.GetParagraphs()))
 
 	// 打印所有段落内容
 	fmt.Println("\n文档内容：")
-	for i, para := range openedDoc.Body.Paragraphs {
+	for i, para := range openedDoc.Body.GetParagraphs() {
 		if len(para.Runs) > 0 {
 			fmt.Printf("段落 %d: %s\n", i+1, para.Runs[0].Text.Content)
 		}
