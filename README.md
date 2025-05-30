@@ -24,6 +24,18 @@ WordZero 是一个使用 Golang 实现的 Word 文档操作库，提供基础的
 go get github.com/ZeroHawkeye/wordZero
 ```
 
+### 版本说明
+
+推荐使用带版本号的安装方式：
+
+```bash
+# 安装最新版本
+go get github.com/ZeroHawkeye/wordZero@latest
+
+# 安装指定版本
+go get github.com/ZeroHawkeye/wordZero@v0.4.0
+```
+
 ## 项目结构
 
 ```
