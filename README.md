@@ -197,6 +197,19 @@ wordZero/
   - [x] 表格位置信息获取
 - [x] 单元格访问接口
   - [x] 按行列索引访问
+- [x] **单元格遍历迭代器** ✨ **新实现**
+  - [x] 单元格迭代器（CellIterator）
+  - [x] 按顺序遍历所有单元格
+  - [x] 迭代器重置和位置跟踪
+  - [x] 迭代进度计算
+  - [x] 单元格信息结构（CellInfo）
+  - [x] ForEach批量处理方法
+  - [x] 按行遍历（ForEachInRow）
+  - [x] 按列遍历（ForEachInColumn）
+  - [x] 获取单元格范围（GetCellRange）
+  - [x] 条件查找单元格（FindCells）
+  - [x] 按文本查找单元格（FindCellsByText）
+  - [x] 精确匹配和模糊匹配支持
 
 ##### 表格样式和外观
 - [x] 表格整体样式
@@ -240,9 +253,8 @@ wordZero/
 - [ ] 表格访问增强
   - [ ] 按标题查找表格
   - [ ] 按范围批量访问
-  - [ ] 单元格遍历迭代器
 
-#### 图片功能  
+#### 图片功能
 - [ ] 图片插入
 - [ ] 图片大小调整
 - [ ] 图片位置设置
@@ -311,6 +323,7 @@ wordZero/
 - `examples/table_layout/` - 表格布局和尺寸演示
 - `examples/table_style/` - 表格样式和外观演示
 - `examples/cell_advanced/` - 单元格高级功能演示
+- `examples/cell_iterator/` - **单元格迭代器功能演示** ✨ **新增**
 - `examples/formatting/` - 格式化演示
 - `examples/page_settings/` - **页面设置演示** ✨ **新增**
 - `examples/advanced_features/` - **高级功能综合演示** ✨ **新增**
@@ -339,6 +352,9 @@ go run ./examples/table_style/
 
 # 运行单元格高级功能演示
 go run ./examples/cell_advanced/
+
+# 运行单元格迭代器功能演示
+go run ./examples/cell_iterator/
 
 # 运行格式化演示  
 go run ./examples/formatting/

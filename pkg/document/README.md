@@ -220,6 +220,84 @@
 - [`SetCellShading(row, col int, config *ShadingConfig)`](table.go#L2121) - 设置单元格底纹
 - [`SetAlternatingRowColors(evenRowColor, oddRowColor string)`](table.go#L2142) - 设置交替行颜色
 
+### 单元格遍历迭代器 ✨ **新功能**
+
+提供强大的单元格遍历和查找功能：
+
+##### CellIterator - 单元格迭代器
+```go
+// 创建迭代器
+iterator := table.NewCellIterator()
+
+// 遍历所有单元格
+for iterator.HasNext() {
+    cellInfo, err := iterator.Next()
+    if err != nil {
+        break
+    }
+    fmt.Printf("单元格[%d,%d]: %s\n", cellInfo.Row, cellInfo.Col, cellInfo.Text)
+}
+
+// 获取进度
+progress := iterator.Progress() // 0.0 - 1.0
+
+// 重置迭代器
+iterator.Reset()
+```
+
+##### ForEach 批量处理
+```go
+// 遍历所有单元格
+err := table.ForEach(func(row, col int, cell *TableCell, text string) error {
+    // 处理每个单元格
+    return nil
+})
+
+// 按行遍历
+err := table.ForEachInRow(rowIndex, func(col int, cell *TableCell, text string) error {
+    // 处理行中的每个单元格
+    return nil
+})
+
+// 按列遍历
+err := table.ForEachInColumn(colIndex, func(row int, cell *TableCell, text string) error {
+    // 处理列中的每个单元格
+    return nil
+})
+```
+
+##### 范围操作
+```go
+// 获取指定范围的单元格
+cells, err := table.GetCellRange(startRow, startCol, endRow, endCol)
+for _, cellInfo := range cells {
+    fmt.Printf("单元格[%d,%d]: %s\n", cellInfo.Row, cellInfo.Col, cellInfo.Text)
+}
+```
+
+##### 查找功能
+```go
+// 自定义条件查找
+cells, err := table.FindCells(func(row, col int, cell *TableCell, text string) bool {
+    return strings.Contains(text, "关键词")
+})
+
+// 按文本查找
+exactCells, err := table.FindCellsByText("精确匹配", true)
+fuzzyCells, err := table.FindCellsByText("模糊", false)
+```
+
+##### CellInfo 结构
+```go
+type CellInfo struct {
+    Row    int        // 行索引
+    Col    int        // 列索引
+    Cell   *TableCell // 单元格引用
+    Text   string     // 单元格文本
+    IsLast bool       // 是否为最后一个单元格
+}
+```
+
 ## 工具函数
 
 ### 日志系统

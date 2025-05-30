@@ -4,6 +4,7 @@ package document
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
 )
 
 // Table 表示一个表格
@@ -2319,4 +2320,250 @@ func createTableCellBorder(config *BorderConfig) *TableCellBorder {
 		Space: fmt.Sprintf("%d", config.Space),
 		Color: config.Color,
 	}
+}
+
+// CellIterator 单元格迭代器
+type CellIterator struct {
+	table      *Table
+	currentRow int
+	currentCol int
+	totalRows  int
+	totalCols  int
+}
+
+// CellInfo 单元格信息
+type CellInfo struct {
+	Row    int        // 行索引
+	Col    int        // 列索引
+	Cell   *TableCell // 单元格引用
+	Text   string     // 单元格文本
+	IsLast bool       // 是否为最后一个单元格
+}
+
+// NewCellIterator 创建新的单元格迭代器
+func (t *Table) NewCellIterator() *CellIterator {
+	totalRows := t.GetRowCount()
+	totalCols := 0
+	if totalRows > 0 {
+		totalCols = t.GetColumnCount()
+	}
+
+	return &CellIterator{
+		table:      t,
+		currentRow: 0,
+		currentCol: 0,
+		totalRows:  totalRows,
+		totalCols:  totalCols,
+	}
+}
+
+// HasNext 检查是否还有下一个单元格
+func (iter *CellIterator) HasNext() bool {
+	if iter.totalRows == 0 || iter.totalCols == 0 {
+		return false
+	}
+
+	// 检查当前位置是否超出范围
+	return iter.currentRow < iter.totalRows &&
+		(iter.currentRow < iter.totalRows-1 || iter.currentCol < iter.totalCols)
+}
+
+// Next 获取下一个单元格信息
+func (iter *CellIterator) Next() (*CellInfo, error) {
+	if !iter.HasNext() {
+		return nil, fmt.Errorf("没有更多单元格")
+	}
+
+	// 获取当前单元格
+	cell, err := iter.table.GetCell(iter.currentRow, iter.currentCol)
+	if err != nil {
+		return nil, fmt.Errorf("获取单元格失败: %v", err)
+	}
+
+	// 获取单元格文本
+	text, _ := iter.table.GetCellText(iter.currentRow, iter.currentCol)
+
+	// 创建单元格信息
+	cellInfo := &CellInfo{
+		Row:  iter.currentRow,
+		Col:  iter.currentCol,
+		Cell: cell,
+		Text: text,
+	}
+
+	// 更新位置并检查是否为最后一个
+	iter.currentCol++
+	if iter.currentCol >= iter.totalCols {
+		iter.currentCol = 0
+		iter.currentRow++
+	}
+
+	// 检查是否为最后一个单元格
+	cellInfo.IsLast = !iter.HasNext()
+
+	return cellInfo, nil
+}
+
+// Reset 重置迭代器到开始位置
+func (iter *CellIterator) Reset() {
+	iter.currentRow = 0
+	iter.currentCol = 0
+}
+
+// Current 获取当前位置信息（不移动迭代器）
+func (iter *CellIterator) Current() (int, int) {
+	return iter.currentRow, iter.currentCol
+}
+
+// Total 获取总单元格数量
+func (iter *CellIterator) Total() int {
+	return iter.totalRows * iter.totalCols
+}
+
+// Progress 获取迭代进度（0.0-1.0）
+func (iter *CellIterator) Progress() float64 {
+	if iter.totalRows == 0 || iter.totalCols == 0 {
+		return 1.0
+	}
+
+	processed := iter.currentRow*iter.totalCols + iter.currentCol
+	total := iter.totalRows * iter.totalCols
+
+	return float64(processed) / float64(total)
+}
+
+// ForEach 遍历所有单元格，对每个单元格执行指定函数
+func (t *Table) ForEach(fn func(row, col int, cell *TableCell, text string) error) error {
+	iterator := t.NewCellIterator()
+
+	for iterator.HasNext() {
+		cellInfo, err := iterator.Next()
+		if err != nil {
+			return fmt.Errorf("迭代失败: %v", err)
+		}
+
+		if err := fn(cellInfo.Row, cellInfo.Col, cellInfo.Cell, cellInfo.Text); err != nil {
+			return fmt.Errorf("回调函数执行失败 (行:%d, 列:%d): %v", cellInfo.Row, cellInfo.Col, err)
+		}
+	}
+
+	return nil
+}
+
+// ForEachInRow 遍历指定行的所有单元格
+func (t *Table) ForEachInRow(rowIndex int, fn func(col int, cell *TableCell, text string) error) error {
+	if rowIndex < 0 || rowIndex >= t.GetRowCount() {
+		return fmt.Errorf("行索引无效: %d", rowIndex)
+	}
+
+	colCount := t.GetColumnCount()
+	for col := 0; col < colCount; col++ {
+		cell, err := t.GetCell(rowIndex, col)
+		if err != nil {
+			return fmt.Errorf("获取单元格失败 (行:%d, 列:%d): %v", rowIndex, col, err)
+		}
+
+		text, _ := t.GetCellText(rowIndex, col)
+
+		if err := fn(col, cell, text); err != nil {
+			return fmt.Errorf("回调函数执行失败 (行:%d, 列:%d): %v", rowIndex, col, err)
+		}
+	}
+
+	return nil
+}
+
+// ForEachInColumn 遍历指定列的所有单元格
+func (t *Table) ForEachInColumn(colIndex int, fn func(row int, cell *TableCell, text string) error) error {
+	if colIndex < 0 || colIndex >= t.GetColumnCount() {
+		return fmt.Errorf("列索引无效: %d", colIndex)
+	}
+
+	rowCount := t.GetRowCount()
+	for row := 0; row < rowCount; row++ {
+		cell, err := t.GetCell(row, colIndex)
+		if err != nil {
+			return fmt.Errorf("获取单元格失败 (行:%d, 列:%d): %v", row, colIndex, err)
+		}
+
+		text, _ := t.GetCellText(row, colIndex)
+
+		if err := fn(row, cell, text); err != nil {
+			return fmt.Errorf("回调函数执行失败 (行:%d, 列:%d): %v", row, colIndex, err)
+		}
+	}
+
+	return nil
+}
+
+// GetCellRange 获取指定范围内的所有单元格
+func (t *Table) GetCellRange(startRow, startCol, endRow, endCol int) ([]*CellInfo, error) {
+	// 参数验证
+	if startRow < 0 || startCol < 0 || endRow >= t.GetRowCount() || endCol >= t.GetColumnCount() {
+		return nil, fmt.Errorf("范围索引无效: (%d,%d) 到 (%d,%d)", startRow, startCol, endRow, endCol)
+	}
+
+	if startRow > endRow || startCol > endCol {
+		return nil, fmt.Errorf("开始位置不能大于结束位置")
+	}
+
+	var cells []*CellInfo
+
+	for row := startRow; row <= endRow; row++ {
+		for col := startCol; col <= endCol; col++ {
+			cell, err := t.GetCell(row, col)
+			if err != nil {
+				return nil, fmt.Errorf("获取单元格失败 (行:%d, 列:%d): %v", row, col, err)
+			}
+
+			text, _ := t.GetCellText(row, col)
+
+			cellInfo := &CellInfo{
+				Row:    row,
+				Col:    col,
+				Cell:   cell,
+				Text:   text,
+				IsLast: row == endRow && col == endCol,
+			}
+
+			cells = append(cells, cellInfo)
+		}
+	}
+
+	return cells, nil
+}
+
+// FindCells 查找满足条件的单元格
+func (t *Table) FindCells(predicate func(row, col int, cell *TableCell, text string) bool) ([]*CellInfo, error) {
+	var matchedCells []*CellInfo
+
+	err := t.ForEach(func(row, col int, cell *TableCell, text string) error {
+		if predicate(row, col, cell, text) {
+			cellInfo := &CellInfo{
+				Row:  row,
+				Col:  col,
+				Cell: cell,
+				Text: text,
+			}
+			matchedCells = append(matchedCells, cellInfo)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return matchedCells, nil
+}
+
+// FindCellsByText 根据文本内容查找单元格
+func (t *Table) FindCellsByText(searchText string, exactMatch bool) ([]*CellInfo, error) {
+	return t.FindCells(func(row, col int, cell *TableCell, text string) bool {
+		if exactMatch {
+			return text == searchText
+		}
+		// 使用strings.Contains进行模糊匹配
+		return strings.Contains(text, searchText)
+	})
 }
