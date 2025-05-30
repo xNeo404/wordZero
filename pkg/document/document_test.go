@@ -300,6 +300,46 @@ func TestParagraphSetStyle(t *testing.T) {
 	}
 }
 
+// TestParagraphSetIndentation 测试段落缩进设置
+func TestParagraphSetIndentation(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试缩进")
+
+	// 测试首行缩进
+	para.SetIndentation(0.5, 0, 0)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.Indentation == nil {
+		t.Fatal("Indentation should not be nil")
+	}
+
+	// 0.5厘米 = 283.5 TWIPs，四舍五入为284
+	expectedFirstLine := "283"
+	if para.Properties.Indentation.FirstLine != expectedFirstLine {
+		t.Errorf("Expected FirstLine %s, got %s", expectedFirstLine, para.Properties.Indentation.FirstLine)
+	}
+
+	// 测试左右缩进
+	para.SetIndentation(-0.5, 1.0, 0.5)
+
+	expectedFirstLine = "-283" // 悬挂缩进
+	expectedLeft := "567"      // 1厘米
+	expectedRight := "283"     // 0.5厘米
+
+	if para.Properties.Indentation.FirstLine != expectedFirstLine {
+		t.Errorf("Expected FirstLine %s, got %s", expectedFirstLine, para.Properties.Indentation.FirstLine)
+	}
+	if para.Properties.Indentation.Left != expectedLeft {
+		t.Errorf("Expected Left %s, got %s", expectedLeft, para.Properties.Indentation.Left)
+	}
+	if para.Properties.Indentation.Right != expectedRight {
+		t.Errorf("Expected Right %s, got %s", expectedRight, para.Properties.Indentation.Right)
+	}
+}
+
 // TestDocumentSave 测试文档保存
 func TestDocumentSave(t *testing.T) {
 	doc := New()

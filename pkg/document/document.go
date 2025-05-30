@@ -887,6 +887,43 @@ func (p *Paragraph) SetStyle(styleID string) {
 	Debugf("设置段落样式: %s", styleID)
 }
 
+// SetIndentation 设置段落的缩进属性。
+//
+// 参数：
+//   - firstLineCm: 首行缩进，单位为厘米（可以为负数表示悬挂缩进）
+//   - leftCm: 左缩进，单位为厘米
+//   - rightCm: 右缩进，单位为厘米
+//
+// 示例：
+//
+//	para := doc.AddParagraph("这是一个有缩进的段落")
+//	para.SetIndentation(0.5, 0, 0)    // 首行缩进0.5厘米
+//	para.SetIndentation(-0.5, 1, 0)  // 悬挂缩进0.5厘米，左缩进1厘米
+func (p *Paragraph) SetIndentation(firstLineCm, leftCm, rightCm float64) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if p.Properties.Indentation == nil {
+		p.Properties.Indentation = &Indentation{}
+	}
+
+	// 转换厘米为TWIPs (1厘米 = 567 TWIPs)
+	if firstLineCm != 0 {
+		p.Properties.Indentation.FirstLine = strconv.Itoa(int(firstLineCm * 567))
+	}
+
+	if leftCm != 0 {
+		p.Properties.Indentation.Left = strconv.Itoa(int(leftCm * 567))
+	}
+
+	if rightCm != 0 {
+		p.Properties.Indentation.Right = strconv.Itoa(int(rightCm * 567))
+	}
+
+	Debugf("设置段落缩进: 首行=%.2fcm, 左=%.2fcm, 右=%.2fcm", firstLineCm, leftCm, rightCm)
+}
+
 // GetStyleManager 获取文档的样式管理器。
 //
 // 返回文档的样式管理器，可用于访问和管理样式。
