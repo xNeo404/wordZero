@@ -157,8 +157,8 @@ func (d *Document) CreateTOCSDT(title string, maxLevel int) *SDT {
 		},
 	}
 
-	// 添加书签开始 - 使用已有的Bookmark类型
-	bookmarkStart := &Bookmark{
+	// 添加书签开始 - 使用已有的BookmarkStart类型
+	bookmarkStart := &BookmarkStart{
 		ID:   "0",
 		Name: "_Toc11693_WPSOffice_Type3",
 	}

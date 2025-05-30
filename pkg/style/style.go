@@ -654,17 +654,20 @@ func (sm *StyleManager) addSpecialStyles() {
 				Val: "30", // 15磅
 			},
 			FontFamily: &FontFamily{
-				ASCII:    "Calibri Light",
-				EastAsia: "微软雅黑 Light",
-				HAnsi:    "Calibri Light",
-				CS:       "Calibri Light",
+				ASCII:    "Calibri",
+				EastAsia: "微软雅黑",
+				HAnsi:    "Calibri",
+				CS:       "Calibri",
 			},
 			Color: &Color{
-				Val: "595959", // 灰色
+				Val: "7030A0", // 紫色
 			},
 		},
 	}
 	sm.AddStyle(subtitle)
+
+	// 添加TOC样式（目录样式）
+	sm.addTOCStyles()
 
 	// 列表段落样式
 	listParagraph := &Style{
@@ -803,6 +806,189 @@ func (sm *StyleManager) addSpecialStyles() {
 		},
 	}
 	sm.AddStyle(codeBlock)
+}
+
+// addTOCStyles 添加TOC（目录）样式
+func (sm *StyleManager) addTOCStyles() {
+	// TOC 1 - 一级目录样式（无缩进）
+	toc1 := &Style{
+		Type:    string(StyleTypeParagraph),
+		StyleID: "13", // TOC1 样式ID
+		Name: &StyleName{
+			Val: "toc 1",
+		},
+		BasedOn: &BasedOn{
+			Val: "Normal",
+		},
+		Next: &Next{
+			Val: "Normal",
+		},
+		ParagraphPr: &ParagraphProperties{
+			Spacing: &Spacing{
+				After: "100", // 5磅段后间距
+			},
+			Indentation: &Indentation{
+				Left: "0", // 无左缩进
+			},
+		},
+		RunPr: &RunProperties{
+			FontSize: &FontSize{
+				Val: "22", // 11磅
+			},
+			FontFamily: &FontFamily{
+				ASCII:    "Calibri",
+				EastAsia: "宋体",
+				HAnsi:    "Calibri",
+				CS:       "Times New Roman",
+			},
+		},
+	}
+	sm.AddStyle(toc1)
+
+	// TOC 2 - 二级目录样式（左缩进240 TWIPs = 12磅）
+	toc2 := &Style{
+		Type:    string(StyleTypeParagraph),
+		StyleID: "14", // TOC2 样式ID
+		Name: &StyleName{
+			Val: "toc 2",
+		},
+		BasedOn: &BasedOn{
+			Val: "Normal",
+		},
+		Next: &Next{
+			Val: "Normal",
+		},
+		ParagraphPr: &ParagraphProperties{
+			Spacing: &Spacing{
+				After: "100", // 5磅段后间距
+			},
+			Indentation: &Indentation{
+				Left: "240", // 左缩进240 TWIPs (12磅)
+			},
+		},
+		RunPr: &RunProperties{
+			FontSize: &FontSize{
+				Val: "22", // 11磅
+			},
+			FontFamily: &FontFamily{
+				ASCII:    "Calibri",
+				EastAsia: "宋体",
+				HAnsi:    "Calibri",
+				CS:       "Times New Roman",
+			},
+		},
+	}
+	sm.AddStyle(toc2)
+
+	// TOC 3 - 三级目录样式（左缩进480 TWIPs = 24磅）
+	toc3 := &Style{
+		Type:    string(StyleTypeParagraph),
+		StyleID: "15", // TOC3 样式ID
+		Name: &StyleName{
+			Val: "toc 3",
+		},
+		BasedOn: &BasedOn{
+			Val: "Normal",
+		},
+		Next: &Next{
+			Val: "Normal",
+		},
+		ParagraphPr: &ParagraphProperties{
+			Spacing: &Spacing{
+				After: "100", // 5磅段后间距
+			},
+			Indentation: &Indentation{
+				Left: "480", // 左缩进480 TWIPs (24磅)
+			},
+		},
+		RunPr: &RunProperties{
+			FontSize: &FontSize{
+				Val: "22", // 11磅
+			},
+			FontFamily: &FontFamily{
+				ASCII:    "Calibri",
+				EastAsia: "宋体",
+				HAnsi:    "Calibri",
+				CS:       "Times New Roman",
+			},
+		},
+	}
+	sm.AddStyle(toc3)
+
+	// TOC 4-9 - 四到九级目录样式
+	for level := 4; level <= 9; level++ {
+		styleID := fmt.Sprintf("%d", 12+level) // 16, 17, 18, 19, 20, 21
+		tocStyle := &Style{
+			Type:    string(StyleTypeParagraph),
+			StyleID: styleID,
+			Name: &StyleName{
+				Val: fmt.Sprintf("toc %d", level),
+			},
+			BasedOn: &BasedOn{
+				Val: "Normal",
+			},
+			Next: &Next{
+				Val: "Normal",
+			},
+			ParagraphPr: &ParagraphProperties{
+				Spacing: &Spacing{
+					After: "100", // 5磅段后间距
+				},
+				Indentation: &Indentation{
+					Left: fmt.Sprintf("%d", level*240), // 每级增加240 TWIPs (12磅)
+				},
+			},
+			RunPr: &RunProperties{
+				FontSize: &FontSize{
+					Val: "22", // 11磅
+				},
+				FontFamily: &FontFamily{
+					ASCII:    "Calibri",
+					EastAsia: "宋体",
+					HAnsi:    "Calibri",
+					CS:       "Times New Roman",
+				},
+			},
+		}
+		sm.AddStyle(tocStyle)
+	}
+
+	// 添加基础TOC样式（样式ID为"12"的目录标题样式）
+	tocBase := &Style{
+		Type:    string(StyleTypeParagraph),
+		StyleID: "12", // 基础TOC样式ID
+		Name: &StyleName{
+			Val: "TOCHeading",
+		},
+		BasedOn: &BasedOn{
+			Val: "Normal",
+		},
+		Next: &Next{
+			Val: "Normal",
+		},
+		ParagraphPr: &ParagraphProperties{
+			Spacing: &Spacing{
+				Before: "240", // 12磅段前间距
+				After:  "120", // 6磅段后间距
+			},
+			Justification: &Justification{
+				Val: "center", // 居中对齐
+			},
+		},
+		RunPr: &RunProperties{
+			Bold: &Bold{},
+			FontSize: &FontSize{
+				Val: "26", // 13磅
+			},
+			FontFamily: &FontFamily{
+				ASCII:    "Calibri",
+				EastAsia: "宋体",
+				HAnsi:    "Calibri",
+				CS:       "Times New Roman",
+			},
+		},
+	}
+	sm.AddStyle(tocBase)
 }
 
 // GetStyleWithInheritance 获取具有继承属性的样式

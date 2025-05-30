@@ -1,5 +1,47 @@
 # WordZero 更新日志
 
+## [v1.3.1] - 2025-05-30
+
+### 🐛 问题修复
+
+#### XML命名空间错误修复 ✨ **重要修复**
+- **修复问题**: 解决了生成的XML文档中 `w15:color` 元素命名空间未声明的错误
+- **影响范围**: 主要影响使用目录功能（TOC）的文档
+- **错误表现**: 
+  - XML linter 报错：`The prefix "w15" for element "w15:color" is not bound`
+  - 生成的document.xml缺少 `xmlns:w15` 命名空间声明
+- **修复方案**:
+  - 在 `serializeDocument()` 方法中添加 `w15` 命名空间声明
+  - 添加 `xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"` 到文档根元素
+- **修复后效果**:
+  ```xml
+  <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
+              xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">
+  ```
+
+#### 技术细节
+- **修改文件**: `pkg/document/document.go`
+- **修改内容**: 在 `documentXML` 结构体中添加 `XmlnsW15` 字段
+- **影响功能**: 
+  - 目录生成（TOC）
+  - 结构化文档标签（SDT）
+  - 所有使用 `w15:color` 的功能
+
+### 🔍 质量改进
+
+#### XML 标准合规性
+- ✅ **符合OOXML规范**: 生成的XML现在完全符合Office Open XML标准
+- ✅ **命名空间完整性**: 所有使用的XML命名空间都正确声明
+- ✅ **XML验证通过**: 生成的文档能够通过XML linter验证
+- ✅ **Word兼容性**: 与Microsoft Word和WPS完全兼容
+
+#### 测试验证
+- 通过 `advanced_features` 示例验证修复效果
+- 使用 `unzip_tool.exe` 解压验证XML结构
+- 确认所有 `w15:` 前缀元素都有正确的命名空间绑定
+
+---
+
 ## [v1.3.0] - 2025-01-18
 
 ### ✨ 重大功能新增

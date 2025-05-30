@@ -829,7 +829,7 @@ func (d *Document) AddHeadingParagraphWithBookmark(text string, level int, bookm
 		bookmarkID := fmt.Sprintf("bookmark_%d_%s", len(d.Body.Elements), bookmarkName)
 
 		// 添加书签开始标记作为单独的元素到文档主体中
-		d.Body.Elements = append(d.Body.Elements, &Bookmark{
+		d.Body.Elements = append(d.Body.Elements, &BookmarkStart{
 			ID:   bookmarkID,
 			Name: bookmarkName,
 		})
@@ -1593,14 +1593,16 @@ func (d *Document) serializeDocument() error {
 
 	// 创建文档结构
 	type documentXML struct {
-		XMLName xml.Name `xml:"w:document"`
-		Xmlns   string   `xml:"xmlns:w,attr"`
-		Body    *Body    `xml:"w:body"`
+		XMLName  xml.Name `xml:"w:document"`
+		Xmlns    string   `xml:"xmlns:w,attr"`
+		XmlnsW15 string   `xml:"xmlns:w15,attr"`
+		Body     *Body    `xml:"w:body"`
 	}
 
 	doc := documentXML{
-		Xmlns: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-		Body:  d.Body,
+		Xmlns:    "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+		XmlnsW15: "http://schemas.microsoft.com/office/word/2012/wordml",
+		Body:     d.Body,
 	}
 
 	// 序列化为XML

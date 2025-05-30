@@ -39,17 +39,27 @@ type Hyperlink struct {
 	Runs    []Run    `xml:"w:r"`
 }
 
-// Bookmark 书签结构
-type Bookmark struct {
+// BookmarkEnd 书签结束
+type BookmarkEnd struct {
+	XMLName xml.Name `xml:"w:bookmarkEnd"`
+	ID      string   `xml:"w:id,attr"`
+}
+
+// ElementType 返回书签结束元素类型
+func (b *BookmarkEnd) ElementType() string {
+	return "bookmarkEnd"
+}
+
+// BookmarkStart 书签开始
+type BookmarkStart struct {
 	XMLName xml.Name `xml:"w:bookmarkStart"`
 	ID      string   `xml:"w:id,attr"`
 	Name    string   `xml:"w:name,attr"`
 }
 
-// BookmarkEnd 书签结束
-type BookmarkEnd struct {
-	XMLName xml.Name `xml:"w:bookmarkEnd"`
-	ID      string   `xml:"w:id,attr"`
+// ElementType 返回书签开始元素类型
+func (b *BookmarkStart) ElementType() string {
+	return "bookmarkStart"
 }
 
 // DefaultTOCConfig 返回默认目录配置
@@ -124,7 +134,7 @@ func (d *Document) AddHeadingWithBookmark(text string, level int, bookmarkName s
 
 	// 添加书签开始
 	bookmarkID := fmt.Sprintf("%d", len(d.Body.Elements))
-	bookmark := &Bookmark{
+	bookmark := &BookmarkStart{
 		ID:   bookmarkID,
 		Name: bookmarkName,
 	}
@@ -478,8 +488,8 @@ func (d *Document) AutoGenerateTOC(config *TOCConfig) error {
 		insertIndex = 0
 	}
 
-	// 收集文档中的所有标题
-	entries := d.collectHeadings(config.MaxLevel)
+	// 收集文档中的所有标题并为它们添加书签
+	entries := d.collectHeadingsAndAddBookmarks(config.MaxLevel)
 
 	if len(entries) == 0 {
 		return fmt.Errorf("文档中未找到标题（样式ID为2-10的段落）")
@@ -800,4 +810,61 @@ func generateUniqueID(text string) int {
 		hash = -hash
 	}
 	return (hash % 90000) + 10000 // 生成10000-99999之间的数字
+}
+
+// collectHeadingsAndAddBookmarks 收集标题信息并添加书签
+func (d *Document) collectHeadingsAndAddBookmarks(maxLevel int) []TOCEntry {
+	var entries []TOCEntry
+	pageNum := 1 // 简化处理，实际需要计算真实页码
+
+	// 需要一个新的Elements切片来插入书签
+	newElements := make([]interface{}, 0, len(d.Body.Elements)*2)
+	entryIndex := 0
+
+	for _, element := range d.Body.Elements {
+		if paragraph, ok := element.(*Paragraph); ok {
+			level := d.getHeadingLevel(paragraph)
+			if level > 0 && level <= maxLevel {
+				text := d.extractParagraphText(paragraph)
+				if text != "" {
+					// 为每个条目生成唯一的书签ID（与目录条目中使用的一致）
+					anchor := fmt.Sprintf("_Toc%d", generateUniqueID(text))
+
+					entry := TOCEntry{
+						Text:       text,
+						Level:      level,
+						PageNum:    pageNum,
+						BookmarkID: anchor,
+					}
+					entries = append(entries, entry)
+
+					// 在标题段落前添加书签开始标记
+					bookmarkStart := &BookmarkStart{
+						ID:   fmt.Sprintf("%d", entryIndex),
+						Name: anchor,
+					}
+					newElements = append(newElements, bookmarkStart)
+
+					// 添加原段落
+					newElements = append(newElements, element)
+
+					// 在标题段落后添加书签结束标记
+					bookmarkEnd := &BookmarkEnd{
+						ID: fmt.Sprintf("%d", entryIndex),
+					}
+					newElements = append(newElements, bookmarkEnd)
+
+					entryIndex++
+					continue
+				}
+			}
+		}
+		// 非标题段落直接添加
+		newElements = append(newElements, element)
+	}
+
+	// 更新文档元素
+	d.Body.Elements = newElements
+
+	return entries
 }
