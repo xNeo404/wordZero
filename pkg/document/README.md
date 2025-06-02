@@ -126,7 +126,11 @@
 **变量替换**: 支持 `{{变量名}}` 语法进行动态内容替换
 **条件语句**: 支持 `{{#if 条件}}...{{/if}}` 语法进行条件渲染
 **循环语句**: 支持 `{{#each 列表}}...{{/each}}` 语法进行列表渲染
-**模板继承**: 支持 `{{extends "基础模板"}}` 语法进行模板继承
+**模板继承**: 支持 `{{extends "基础模板"}}` 语法和 `{{#block "块名"}}...{{/block}}` 块重写机制，实现真正的模板继承
+  - **块定义**: 在基础模板中定义可重写的内容块
+  - **块重写**: 在子模板中选择性重写特定块，未重写的块保持父模板默认内容
+  - **多级继承**: 支持模板的多层继承关系
+  - **完整保留**: 未重写的块完整保留父模板的默认内容和格式
 **循环内条件**: 完美支持循环内部的条件表达式，如 `{{#each items}}{{#if isActive}}...{{/if}}{{/each}}`
 **数据类型支持**: 支持字符串、数字、布尔值、对象等多种数据类型
 **结构体绑定**: 支持从Go结构体自动生成模板数据
@@ -143,6 +147,169 @@
 - [`Merge(other *TemplateData)`](template.go) - 合并模板数据
 - [`Clear()`](template.go) - 清空模板数据
 - [`FromStruct(data interface{})`](template.go) - 从结构体生成模板数据
+
+### 模板继承详细使用说明 ✨ **新增功能**
+
+模板继承是WordZero模板引擎的高级功能，允许基于现有模板创建扩展模板，通过块定义和重写机制实现模板的复用和扩展。
+
+#### 基础语法
+
+**1. 基础模板块定义**
+```go
+// 定义带有可重写块的基础模板
+baseTemplate := `{{companyName}} 报告
+
+{{#block "header"}}
+默认标题内容
+日期：{{reportDate}}
+{{/block}}
+
+{{#block "summary"}}
+默认摘要内容
+{{/block}}
+
+{{#block "main_content"}}
+默认主要内容
+{{/block}}
+
+{{#block "footer"}}
+报告人：{{reporterName}}
+{{/block}}`
+
+engine.LoadTemplate("base_report", baseTemplate)
+```
+
+**2. 子模板继承和块重写**
+```go
+// 创建继承基础模板的子模板
+childTemplate := `{{extends "base_report"}}
+
+{{#block "summary"}}
+销售业绩摘要
+本月销售目标已达成 {{achievementRate}}%
+{{/block}}
+
+{{#block "main_content"}}
+详细销售数据：
+- 总销售额：{{totalSales}}
+- 新增客户：{{newCustomers}}
+- 成交订单：{{orders}}
+{{/block}}`
+
+engine.LoadTemplate("sales_report", childTemplate)
+```
+
+#### 继承特性
+
+**块重写策略**：
+- 重写的块完全替换父模板中的对应块
+- 未重写的块保持父模板的默认内容
+- 支持选择性重写，灵活性极高
+
+**多级继承**：
+```go
+// 第一级：基础模板
+baseTemplate := `{{#block "document"}}基础文档{{/block}}`
+
+// 第二级：业务模板
+businessTemplate := `{{extends "base"}}
+{{#block "document"}}
+{{#block "business_header"}}业务标题{{/block}}
+{{#block "business_content"}}业务内容{{/block}}
+{{/block}}`
+
+// 第三级：具体业务模板
+salesTemplate := `{{extends "business"}}
+{{#block "business_header"}}销售报告{{/block}}
+{{#block "business_content"}}销售数据分析{{/block}}`
+```
+
+#### 实际应用示例
+
+```go
+func demonstrateTemplateInheritance() {
+    engine := document.NewTemplateEngine()
+    
+    // 基础报告模板
+    baseTemplate := `{{companyName}} 工作报告
+报告日期：{{reportDate}}
+
+{{#block "summary"}}
+默认摘要内容
+{{/block}}
+
+{{#block "main_content"}}
+默认主要内容
+{{/block}}
+
+{{#block "conclusion"}}
+默认结论
+{{/block}}
+
+{{#block "signature"}}
+报告人：{{reporterName}}
+部门：{{department}}
+{{/block}}`
+    
+    engine.LoadTemplate("base_report", baseTemplate)
+    
+    // 销售报告模板（重写部分块）
+    salesTemplate := `{{extends "base_report"}}
+
+{{#block "summary"}}
+销售业绩摘要
+本月销售目标已达成 {{achievementRate}}%
+{{/block}}
+
+{{#block "main_content"}}
+销售数据分析
+- 总销售额：{{totalSales}}
+- 新增客户：{{newCustomers}}
+- 成交订单：{{orders}}
+
+{{#each channels}}
+- {{name}}：{{sales}} ({{percentage}}%)
+{{/each}}
+{{/block}}`
+    
+    engine.LoadTemplate("sales_report", salesTemplate)
+    
+    // 准备数据并渲染
+    data := document.NewTemplateData()
+    data.SetVariable("companyName", "WordZero科技")
+    data.SetVariable("reportDate", "2024年12月01日")
+    data.SetVariable("reporterName", "张三")
+    data.SetVariable("department", "销售部")
+    data.SetVariable("achievementRate", "125")
+    data.SetVariable("totalSales", "1,850,000")
+    data.SetVariable("newCustomers", "45")
+    data.SetVariable("orders", "183")
+    
+    channels := []interface{}{
+        map[string]interface{}{"name": "线上电商", "sales": "742,000", "percentage": "40.1"},
+        map[string]interface{}{"name": "直销团队", "sales": "555,000", "percentage": "30.0"},
+    }
+    data.SetList("channels", channels)
+    
+    // 渲染并保存
+    doc, _ := engine.RenderToDocument("sales_report", data)
+    doc.Save("sales_report.docx")
+}
+```
+
+#### 优势与应用场景
+
+**主要优势**：
+- **代码复用**：避免重复定义相同的模板结构
+- **维护性**：修改基础模板自动影响所有子模板
+- **灵活性**：可选择性重写需要的部分，保留其他默认内容
+- **扩展性**：支持多级继承，构建复杂的模板层次结构
+
+**典型应用场景**：
+- **企业报告体系**：基础报告模板+各部门专用模板
+- **文档标准化**：统一格式的不同类型文档（合同、发票、通知等）
+- **多语言文档**：相同结构不同语言的文档模板
+- **品牌一致性**：保持企业品牌元素的统一性
 
 ### 图片操作功能 ✨ 新增功能
 - [`AddImageFromFile(filePath string, config *ImageConfig)`](image.go) - 从文件添加图片

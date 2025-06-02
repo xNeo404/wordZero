@@ -47,3 +47,9 @@ Thumbs.db
 bin/
 dist/
 build/ 
+benchmark/results/golang
+benchmark/results/javascript
+benchmark/results/python
+benchmark/python/venv
+benchmark/javascript/node_modules
+benchmark/javascript/package-lock.json

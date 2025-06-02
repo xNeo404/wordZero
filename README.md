@@ -3,6 +3,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#测试)
+[![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](wordZero.wiki/13-性能基准测试)
+[![Performance](https://img.shields.io/badge/Performance-Golang%20优胜-brightgreen.svg)](wordZero.wiki/13-性能基准测试)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
 
 ## 项目介绍
@@ -16,7 +18,11 @@ WordZero 是一个使用 Golang 实现的 Word 文档操作库，提供基础的
 - 📝 **文本格式化**: 字体、大小、颜色、粗体、斜体等完整支持
 - 📐 **段落格式**: 对齐、间距、缩进等段落属性设置
 - 🏷️ **标题导航**: 完整支持Heading1-9样式，可被Word导航窗格识别
-- ⚡ **高性能**: 零依赖的纯Go实现，内存占用低
+- 📊 **表格功能**: 完整的表格创建、编辑、样式设置和迭代器支持
+- 📄 **页面设置**: 页面尺寸、边距、页眉页脚等专业排版功能
+- 🔧 **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎等
+- 🎯 **模板继承**: 支持基础模板和块重写机制，实现模板复用和扩展
+- ⚡ **卓越性能**: 零依赖的纯Go实现，平均2.62ms处理速度，比JavaScript快3.7倍，比Python快21倍
 - 🔧 **易于使用**: 简洁的API设计，链式调用支持
 
 ## 安装
@@ -37,353 +43,111 @@ go get github.com/ZeroHawkeye/wordZero@latest
 go get github.com/ZeroHawkeye/wordZero@v0.4.0
 ```
 
-## 项目结构
+## 快速开始
 
-```
-wordZero/
-├── pkg/                      # 公共包
-│   ├── document/            # 文档核心操作
-│   │   ├── document.go      # 主要文档操作API
-│   │   ├── table.go         # 表格操作功能
-│   │   ├── page.go          # 页面设置功能 ✨ 新增
-│   │   ├── header_footer.go # 页眉页脚功能 ✨ 新增
-│   │   ├── toc.go           # 目录生成功能 ✨ 新增
-│   │   ├── footnotes.go     # 脚注尾注功能 ✨ 新增
-│   │   ├── numbering.go     # 列表编号功能 ✨ 新增
-│   │   ├── sdt.go           # 结构化文档标签 ✨ 新增
-│   │   ├── field.go         # 域字段功能 ✨ 新增
-│   │   ├── properties.go    # 文档属性管理 ✨ 新增
-│   │   ├── template.go      # 模板功能 ✨ 新增
-│   │   ├── errors.go        # 错误定义和处理
-│   │   ├── logger.go        # 日志系统
-│   │   ├── doc.go           # 包文档
-│   │   ├── document_test.go # 文档操作单元测试
-│   │   ├── table_test.go    # 表格功能单元测试
-│   │   └── page_test.go     # 页面设置单元测试 ✨ 新增
-│   └── style/               # 样式管理系统
-│       ├── style.go         # 样式核心定义
-│       ├── api.go           # 快速API接口
-│       ├── predefined.go    # 预定义样式常量
-│       ├── api_test.go      # API测试
-│       ├── style_test.go    # 样式系统测试
-│       └── README.md        # 样式系统详细文档
-├── examples/                 # 使用示例
-│   ├── basic/               # 基础功能示例
-│   │   └── basic_example.go
-│   ├── formatting/          # 格式化示例
-│   │   └── text_formatting_example.go
-│   ├── style_demo/          # 样式系统演示
-│   │   └── style_demo.go
-│   ├── table/               # 表格功能示例
-│   │   └── table_example.go
-│   ├── table_layout/        # 表格布局和尺寸示例
-│   │   └── main.go
-│   ├── table_style/         # 表格样式和外观示例
-│   │   └── main.go
-│   ├── cell_advanced/       # 单元格高级功能示例
-│   │   └── main.go
-│   ├── page_settings/       # 页面设置示例 ✨ 新增
-│   │   └── main.go
-│   ├── advanced_features/   # 高级功能综合示例 ✨ 新增
-│   │   └── main.go
-│   ├── template_demo/       # 模板功能演示 ✨ 规划中
-│   │   └── main.go
-│   ├── basic_usage.go       # 基础使用示例
-│   └── output/             # 示例输出文件目录
-├── test/                    # 集成测试文件
-│   ├── document_test.go     # 文档操作集成测试
-│   ├── text_formatting_test.go # 文本格式化集成测试
-│   ├── table_style_test.go  # 表格样式功能集成测试
-│   └── template_test.go     # 模板功能集成测试 ✨ 新增
-├── .gitignore              # Git忽略文件配置
-├── go.mod                  # Go模块定义
-├── LICENSE                 # MIT许可证
-└── README.md              # 项目说明文档
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+    "github.com/ZeroHawkeye/wordZero/pkg/style"
+)
+
+func main() {
+    // 创建新文档
+    doc := document.New()
+    
+    // 添加标题
+    titlePara := doc.AddParagraph("WordZero 使用示例")
+    titlePara.SetStyle(style.StyleHeading1)
+    
+    // 添加正文段落
+    para := doc.AddParagraph("这是一个使用 WordZero 创建的文档示例。")
+    para.SetFontFamily("宋体")
+    para.SetFontSize(12)
+    para.SetColor("333333")
+    
+    // 创建表格
+    tableConfig := &document.TableConfig{
+        Rows:    3,
+        Columns: 3,
+    }
+    table := doc.AddTable(tableConfig)
+    table.SetCellText(0, 0, "表头1")
+    table.SetCellText(0, 1, "表头2")
+    table.SetCellText(0, 2, "表头3")
+    
+    // 保存文档
+    if err := doc.Save("example.docx"); err != nil {
+        log.Fatal(err)
+    }
+}
 ```
 
-## 功能特性
+### 模板继承功能示例
 
-### ✅ 已实现功能
+```go
+// 创建基础模板
+engine := document.NewTemplateEngine()
+baseTemplate := `{{companyName}} 工作报告
 
-#### 文档基础操作
-- [x] 创建新的 Word 文档
-- [x] 读取和解析现有文档 ✨ **重大改进**
-  - [x] **动态元素解析**: 支持段落、表格、节属性等多种元素类型
-  - [x] **结构化解析**: 保持文档元素的原始顺序和层次结构
-  - [x] **完整XML解析**: 使用流式解析，支持复杂的嵌套结构
-  - [x] **错误恢复**: 智能跳过未知元素，确保解析稳定性
-  - [x] **性能优化**: 内存友好的增量解析，适用于大型文档
-- [x] 文档保存和压缩
-- [x] ZIP文件处理和OOXML结构解析
+{{#block "summary"}}
+默认摘要内容
+{{/block}}
 
-#### 文本和段落操作
-- [x] 文本内容的添加和修改
-- [x] 段落创建和管理
-- [x] 文本格式化（字体、大小、颜色、粗体、斜体）
-- [x] 段落对齐（左对齐、居中、右对齐、两端对齐）
-- [x] 行间距和段间距设置
-- [x] 首行缩进和左右缩进
-- [x] 混合格式文本（一个段落中多种格式）
+{{#block "content"}}
+默认主要内容
+{{/block}}`
 
-#### 样式管理系统
-- [x] **预定义样式库**: 18种Word内置样式
-  - [x] 标题样式（Heading1-Heading9）- 支持导航窗格识别
-  - [x] 正文样式（Normal）
-  - [x] 文档标题和副标题（Title、Subtitle）
-  - [x] 引用样式（Quote）
-  - [x] 列表段落样式（ListParagraph）
-  - [x] 代码相关样式（CodeBlock、CodeChar）
-  - [x] 字符样式（Emphasis、Strong）
-- [x] **样式继承机制**: 完整的样式继承和属性合并
-- [x] **自定义样式**: 快速创建和应用自定义样式
-- [x] **样式查询API**: 按类型查询、样式验证、批量操作
-- [x] **快速应用API**: 便捷的样式操作接口
+engine.LoadTemplate("base_report", baseTemplate)
 
-#### 页面设置功能 ✨ 新增
-- [x] 页面大小设置（A4、Letter、Legal、A3、A5等标准尺寸）
-- [x] 自定义页面尺寸（毫米单位，支持任意尺寸）
-- [x] 页面方向设置（纵向/横向）
-- [x] 页面边距设置（上下左右边距，毫米单位）
-- [x] 页眉页脚距离设置
-- [x] 装订线宽度设置
-- [x] 完整页面设置API和配置结构
-- [x] 页面设置验证和错误处理
-- [x] 页面设置的保存和加载支持
+// 创建扩展模板，重写特定块
+salesTemplate := `{{extends "base_report"}}
 
-#### 表格功能
+{{#block "summary"}}
+销售业绩摘要：本月达成 {{achievement}}%
+{{/block}}
 
-##### 表格基础操作
-- [x] 表格创建和初始化
-  - [x] 创建指定行列数的表格
-  - [x] 设置表格初始数据
-  - [x] 表格插入到文档指定位置
-  - [x] **新增**：默认表格样式（参考Word标准格式）
-    - [x] 默认单线边框（single边框样式）
-    - [x] 标准边框粗细（4 * 1/8磅）
-    - [x] 自动调整布局（autofit）
-    - [x] 标准单元格边距（108 dxa）
-    - [x] 支持样式覆盖和自定义
-- [x] 表格结构管理
-  - [x] 插入行（指定位置、末尾、开头）
-  - [x] 删除行（单行、多行、指定范围）
-- [x] 表格复制和剪切
-- [x] 表格删除和清空
+{{#block "content"}}
+销售详情：
+- 总销售额：{{totalSales}}
+- 新增客户：{{newCustomers}}
+{{/block}}`
 
-##### 单元格操作
-- [x] 单元格内容管理
-  - [x] 单元格文本设置和获取
-  - [x] 单元格富文本格式支持
-  - [x] 单元格内容清空和重置
-- [x] 单元格合并功能
-  - [x] 横向合并（合并列）
-  - [x] 纵向合并（合并行）
-  - [x] 区域合并（多行多列）
-  - [x] 取消合并操作
-  - [x] 合并状态查询
-- [x] 单元格格式设置
-  - [x] 单元格文字格式（字体、大小、颜色）
-  - [x] 单元格对齐方式（水平、垂直对齐）
-  - [x] 单元格文字方向和旋转
-  - [x] 单元格内边距设置
+engine.LoadTemplate("sales_report", salesTemplate)
 
-##### 表格布局和尺寸
-- [x] 表格尺寸控制
-  - [x] 表格总宽度设置（固定宽度、相对宽度、自动宽度）
-  - [x] 列宽设置（固定宽度、相对宽度、自动调整）
-  - [x] 行高设置（固定高度、最小高度、自动调整）
-  - [x] 单元格尺寸精确控制
-- [x] 表格对齐和定位
-  - [x] 表格页面对齐（左对齐、居中、右对齐）
-  - [x] 表格文字环绕设置
-  - [x] 表格相对定位
-- [x] 表格分页控制
-  - [x] 表格跨页处理
-  - [x] 标题行重复显示
-  - [x] 表格分页符控制
-  - [x] 避免分页的行设置
+// 渲染模板
+data := document.NewTemplateData()
+data.SetVariable("companyName", "WordZero科技")
+data.SetVariable("achievement", "125")
+data.SetVariable("totalSales", "1,850,000")
+data.SetVariable("newCustomers", "45")
 
-##### 表格数据处理
-- [x] 数据导入导出
-  - [x] 二维数组数据绑定
-  - [x] 表格数据提取为数组
-  - [x] 批量数据填充
+doc, _ := engine.RenderToDocument("sales_report", data)
+doc.Save("sales_report.docx")
+```
 
-##### 表格访问和查询
-- [x] 表格查找和定位
-  - [x] 按索引获取表格
-  - [x] 表格位置信息获取
-- [x] 单元格访问接口
-  - [x] 按行列索引访问
-- [x] **单元格遍历迭代器** ✨ **新实现**
-  - [x] 单元格迭代器（CellIterator）
-  - [x] 按顺序遍历所有单元格
-  - [x] 迭代器重置和位置跟踪
-  - [x] 迭代进度计算
-  - [x] 单元格信息结构（CellInfo）
-  - [x] ForEach批量处理方法
-  - [x] 按行遍历（ForEachInRow）
-  - [x] 按列遍历（ForEachInColumn）
-  - [x] 获取单元格范围（GetCellRange）
-  - [x] 条件查找单元格（FindCells）
-  - [x] 按文本查找单元格（FindCellsByText）
-  - [x] 精确匹配和模糊匹配支持
+## 文档和示例
 
-##### 表格样式和外观
-- [x] 表格整体样式
-  - [x] 预定义表格样式模板
-  - [x] 自定义表格样式创建
-  - [x] 表格主题色彩应用
-  - [x] 表格样式继承和覆盖
-- [x] 表格边框设置
-  - [x] 外边框样式（线型、颜色、粗细）
-  - [x] 内边框样式（网格线设置）
-  - [x] 单元格边框独立设置
-  - [x] 边框部分应用（顶部、底部、左右）
-  - [x] 无边框表格支持
-- [x] 表格背景和填充
-  - [x] 表格背景色设置
-  - [x] 单元格背景色设置
-  - [x] 奇偶行颜色交替
-  - [x] 渐变背景支持（基础渐变）
-  - [x] 图案填充支持
+### 📚 完整文档
+- [**📖 Wiki文档**](wordZero.wiki/) - 完整的使用文档和API参考
+- [**🚀 快速开始**](wordZero.wiki/01-快速开始) - 新手入门指南
+- [**⚡ 功能特性详览**](wordZero.wiki/14-功能特性详览) - 所有功能的详细说明
+- [**📊 性能基准测试**](wordZero.wiki/13-性能基准测试) - 跨语言性能对比分析
+- [**🏗️ 项目结构详解**](wordZero.wiki/15-项目结构详解) - 项目架构和代码组织
 
-#### 图片功能
-- [x] 图片插入
-- [x] 图片大小调整
-- [x] 图片位置设置
-- [x] 多种图片格式支持（JPG、PNG、GIF）
-
-### 🚧 规划中功能
-
-#### 表格功能完善
-
-##### 高级表格功能
-- [ ] 表格排序功能（Word内置排序）
-  - [ ] 单列排序（升序、降序）
-  - [ ] 多列排序
-  - [ ] 保持标题行不参与排序
-- [ ] 表格标题和说明
-  - [ ] 表格标题设置（表格上方、下方）
-  - [ ] 表格标题编号自动生成
-  - [ ] 表格描述和备注
-- [ ] 嵌套表格支持
-  - [ ] 单元格内嵌套表格
-  - [ ] 嵌套表格独立样式
-- [ ] 表格模板功能
-  - [ ] 常用表格模板库
-  - [ ] 自定义模板保存
-  - [ ] 模板快速应用
-- [ ] 表格访问增强
-  - [ ] 按标题查找表格
-  - [ ] 按范围批量访问
-
-#### 高级功能 ✨ **已实现**
-- [x] **页眉页脚** ✨ **新实现**
-  - [x] 默认页眉页脚设置
-  - [x] 首页不同页眉页脚
-  - [x] 奇偶页不同页眉页脚  
-  - [x] 页眉页脚中的页码显示
-  - [x] 页眉页脚的格式化支持
-  - [x] 页眉页脚的文本内容设置
-  - [x] 页眉页脚引用和关系管理
-- [x] **文档属性设置** ✨ **新实现**
-  - [x] 标题、作者、主题设置
-  - [x] 关键字、描述、类别设置
-  - [x] 创建时间、修改时间管理
-  - [x] 文档统计信息（字数、段落数等）
-  - [x] 自动统计信息更新
-- [x] **列表和编号** ✨ **新实现**
-  - [x] 无序列表（多种项目符号：圆点、空心圆、方块、短横线、箭头）
-  - [x] 有序列表（数字、字母、罗马数字）
-  - [x] 多级列表支持（最多9级）
-  - [x] 自定义列表样式
-  - [x] 列表编号重新开始
-  - [x] 多级列表批量创建
-  - [x] 列表缩进级别控制
-- [x] **目录生成** ✨ **新实现**
-  - [x] 自动生成目录
-  - [x] 基于标题样式的目录条目
-  - [x] 目录级别控制（1-9级）
-  - [x] 页码显示和超链接支持
-  - [x] 目录更新功能
-  - [x] 带书签的标题支持
-  - [x] 目录样式自定义
-  - [x] 标题统计和列表功能
-- [x] **脚注和尾注** ✨ **新实现**
-  - [x] 脚注添加和管理
-  - [x] 尾注添加和管理
-  - [x] 多种编号格式支持（数字、字母、罗马数字、符号）
-  - [x] 脚注/尾注的删除和更新
-  - [x] 自定义脚注配置
-  - [x] 脚注位置设置（页面底部、文本下方、节末尾、文档末尾）
-  - [x] 脚注重启规则（连续、每节重启、每页重启）
-  - [x] 脚注数量统计
-- [x] **结构化文档标签（SDT）** ✨ **新实现**
-  - [x] 目录SDT结构创建
-  - [x] SDT属性和内容管理
-  - [x] SDT占位符和文档部件支持
-  - [x] 目录条目SDT嵌套
-- [x] **域字段功能** ✨ **新实现**
-  - [x] 超链接域字段
-  - [x] 页码引用域字段
-  - [x] 域字符和指令文本
-  - [x] 域字段的开始、分隔、结束标记
-- [x] **页码设置**（已集成到页眉页脚功能中）
-
-#### 模板功能 ✨ **新实现**
-- [x] **基础模板引擎** ✨ **新实现**
-  - [x] 变量替换：`{{变量名}}` 语法支持
-  - [x] 条件语句：`{{#if 条件}}...{{/if}}` 支持
-  - [x] 循环语句：`{{#each 列表}}...{{/each}}` 支持
-  - [x] 模板继承：基础模板和子模板扩展
-  - [x] 循环上下文变量：`{{@index}}`、`{{@first}}`、`{{@last}}`、`{{this}}`
-  - [x] 嵌套模板语法支持
-- [x] **模板操作** ✨ **新实现**
-  - [x] 从字符串加载模板
-  - [x] 从现有文档创建模板
-  - [x] 模板渲染和变量填充
-  - [x] 模板验证和错误处理
-  - [x] 模板缓存机制
-  - [x] 模板数据绑定和管理
-- [x] **数据绑定** ✨ **新实现**
-  - [x] 基础数据类型支持（字符串、数字、布尔值）
-  - [x] 复杂数据结构支持（map、slice）
-  - [x] 结构体自动绑定
-  - [x] 模板数据合并和清空
-  - [x] 批量变量设置
-- [x] **模板语法** ✨ **新实现**
-  - [x] 正则表达式解析引擎
-  - [x] 语法验证和错误检查
-  - [x] 嵌套条件和循环支持
-  - [x] 模板块管理和组织
-
-## 使用示例
-
+### 💡 使用示例
 查看 `examples/` 目录下的示例代码：
 
 - `examples/basic/` - 基础功能演示
 - `examples/style_demo/` - 样式系统演示  
 - `examples/table/` - 表格功能演示
-- `examples/table_layout/` - 表格布局和尺寸演示
-- `examples/table_style/` - 表格样式和外观演示
-- `examples/cell_advanced/` - 单元格高级功能演示
-- `examples/cell_iterator/` - **单元格迭代器功能演示** ✨ **新增**
 - `examples/formatting/` - 格式化演示
-- `examples/page_settings/` - **页面设置演示** ✨ **新增**
-- `examples/advanced_features/` - **高级功能综合演示** ✨ **新增**
-  - 页眉页脚功能演示
-  - 目录生成和管理演示  
-  - 脚注尾注功能演示
-  - 列表和编号演示
-  - 结构化文档标签演示
-- `examples/template_demo/` - **模板功能演示** ✨ **新增**
-  - 基础变量替换演示
-  - 条件语句功能演示
-  - 循环语句功能演示
-  - 模板继承功能演示
-  - 复杂模板综合应用演示
-  - 从现有文档创建模板演示
-  - 结构体数据绑定演示
+- `examples/page_settings/` - 页面设置演示
+- `examples/advanced_features/` - 高级功能综合演示
+- `examples/template_demo/` - 模板功能演示
+- `examples/template_inheritance_demo/` - 模板继承功能演示 ✨ **新增**
 
 运行示例：
 ```bash
@@ -396,30 +160,57 @@ go run ./examples/style_demo/
 # 运行表格演示
 go run ./examples/table/
 
-# 运行表格布局和尺寸演示
-go run ./examples/table_layout/
-
-# 运行表格样式演示
-go run ./examples/table_style/
-
-# 运行单元格高级功能演示
-go run ./examples/cell_advanced/
-
-# 运行单元格迭代器功能演示
-go run ./examples/cell_iterator/
-
-# 运行格式化演示  
-go run ./examples/formatting/
-
-# 运行页面设置演示
-go run ./examples/page_settings/
-
-# 运行高级功能综合演示
-go run ./examples/advanced_features/
-
-# 运行模板功能演示
-go run ./examples/template_demo/
+# 运行模板继承演示
+go run ./examples/template_inheritance_demo/
 ```
+
+## 主要功能
+
+### ✅ 已实现功能
+- **文档操作**: 创建、读取、保存、解析DOCX文档
+- **文本格式化**: 字体、大小、颜色、粗体、斜体等
+- **样式系统**: 18种预定义样式 + 自定义样式支持
+- **段落格式**: 对齐、间距、缩进等完整支持
+- **表格功能**: 完整的表格操作、样式设置、单元格迭代器
+- **页面设置**: 页面尺寸、边距、页眉页脚等
+- **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎（含模板继承）
+- **图片功能**: 图片插入、大小调整、位置设置
+
+### 🚧 规划中功能
+- 表格排序和高级操作
+- 书签和交叉引用
+- 文档批注和修订
+- 图形绘制功能
+- 多语言和国际化支持
+
+👉 **查看完整功能列表**: [功能特性详览](wordZero.wiki/14-功能特性详览)
+
+## 性能表现
+
+WordZero 在性能方面表现卓越，通过完整的基准测试验证：
+
+| 语言 | 平均执行时间 | 相对性能 |
+|------|-------------|----------|
+| **Golang** | **2.62ms** | **1.00×** |
+| JavaScript | 9.63ms | 3.67× |
+| Python | 55.98ms | 21.37× |
+
+👉 **查看详细性能分析**: [性能基准测试](wordZero.wiki/13-性能基准测试)
+
+## 项目结构
+
+```
+wordZero/
+├── pkg/                    # 核心库代码
+│   ├── document/          # 文档操作功能
+│   └── style/             # 样式管理系统
+├── examples/              # 使用示例
+├── test/                  # 集成测试
+├── benchmark/             # 性能基准测试
+└── wordZero.wiki/         # 完整文档
+```
+
+👉 **查看详细结构说明**: [项目结构详解](wordZero.wiki/15-项目结构详解)
 
 ## 贡献指南
 
@@ -433,3 +224,11 @@ go run ./examples/template_demo/
 ## 许可证
 
 本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
+
+---
+
+**更多资源**:
+- 📖 [完整文档](wordZero.wiki/)
+- 🔧 [API参考](wordZero.wiki/10-API参考)
+- 💡 [最佳实践](wordZero.wiki/09-最佳实践)
+- 📝 [更新日志](CHANGELOG.md)

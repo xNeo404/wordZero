@@ -23,6 +23,12 @@ var (
 
 	// ErrInvalidTemplateData 无效模板数据
 	ErrInvalidTemplateData = NewDocumentError("invalid_template_data", fmt.Errorf("invalid template data"), "")
+
+	// ErrBlockNotFound 块未找到
+	ErrBlockNotFound = NewDocumentError("block_not_found", fmt.Errorf("block not found"), "")
+
+	// ErrInvalidBlockDefinition 无效块定义
+	ErrInvalidBlockDefinition = NewDocumentError("invalid_block_definition", fmt.Errorf("invalid block definition"), "")
 )
 
 // TemplateEngine 模板引擎
@@ -34,22 +40,26 @@ type TemplateEngine struct {
 
 // Template 模板结构
 type Template struct {
-	Name      string            // 模板名称
-	Content   string            // 模板内容
-	BaseDoc   *Document         // 基础文档
-	Variables map[string]string // 模板变量
-	Blocks    []*TemplateBlock  // 模板块
-	Parent    *Template         // 父模板（用于继承）
+	Name          string                    // 模板名称
+	Content       string                    // 模板内容
+	BaseDoc       *Document                 // 基础文档
+	Variables     map[string]string         // 模板变量
+	Blocks        []*TemplateBlock          // 模板块列表
+	Parent        *Template                 // 父模板（用于继承）
+	DefinedBlocks map[string]*TemplateBlock // 定义的块映射
 }
 
 // TemplateBlock 模板块
 type TemplateBlock struct {
-	Type      string                 // 块类型：variable, if, each, inherit
-	Content   string                 // 块内容
-	Condition string                 // 条件（if块使用）
-	Variable  string                 // 变量名（each块使用）
-	Children  []*TemplateBlock       // 子块
-	Data      map[string]interface{} // 块数据
+	Type           string                 // 块类型：variable, if, each, inherit, block
+	Name           string                 // 块名称（block类型使用）
+	Content        string                 // 块内容
+	Condition      string                 // 条件（if块使用）
+	Variable       string                 // 变量名（each块使用）
+	Children       []*TemplateBlock       // 子块
+	Data           map[string]interface{} // 块数据
+	DefaultContent string                 // 默认内容（用于可选重写）
+	IsOverridden   bool                   // 是否被重写
 }
 
 // TemplateData 模板数据
@@ -80,10 +90,11 @@ func (te *TemplateEngine) LoadTemplate(name, content string) (*Template, error) 
 	defer te.mutex.Unlock()
 
 	template := &Template{
-		Name:      name,
-		Content:   content,
-		Variables: make(map[string]string),
-		Blocks:    make([]*TemplateBlock, 0),
+		Name:          name,
+		Content:       content,
+		Variables:     make(map[string]string),
+		Blocks:        make([]*TemplateBlock, 0),
+		DefinedBlocks: make(map[string]*TemplateBlock),
 	}
 
 	// 解析模板内容
@@ -109,11 +120,12 @@ func (te *TemplateEngine) LoadTemplateFromDocument(name string, doc *Document) (
 	}
 
 	template := &Template{
-		Name:      name,
-		Content:   content,
-		BaseDoc:   doc,
-		Variables: make(map[string]string),
-		Blocks:    make([]*TemplateBlock, 0),
+		Name:          name,
+		Content:       content,
+		BaseDoc:       doc,
+		Variables:     make(map[string]string),
+		Blocks:        make([]*TemplateBlock, 0),
+		DefinedBlocks: make(map[string]*TemplateBlock),
 	}
 
 	// 解析模板内容
@@ -176,6 +188,27 @@ func (te *TemplateEngine) parseTemplate(template *Template) error {
 		}
 	}
 
+	// 解析块定义: {{#block "blockName"}}...{{/block}}
+	blockPattern := regexp.MustCompile(`(?s)\{\{#block\s+"([^"]+)"\}\}(.*?)\{\{/block\}\}`)
+	blockMatches := blockPattern.FindAllStringSubmatch(content, -1)
+	for _, match := range blockMatches {
+		if len(match) >= 3 {
+			blockName := match[1]
+			blockContent := match[2]
+
+			block := &TemplateBlock{
+				Type:           "block",
+				Name:           blockName,
+				Content:        blockContent,
+				DefaultContent: blockContent,
+				Children:       make([]*TemplateBlock, 0),
+			}
+
+			template.Blocks = append(template.Blocks, block)
+			template.DefinedBlocks[blockName] = block
+		}
+	}
+
 	// 解析条件语句: {{#if 条件}}...{{/if}} (修复：添加 (?s) 标志以匹配换行符)
 	ifPattern := regexp.MustCompile(`(?s)\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}`)
 	ifMatches := ifPattern.FindAllStringSubmatch(content, -1)
@@ -222,10 +255,29 @@ func (te *TemplateEngine) parseTemplate(template *Template) error {
 		baseTemplate, err := te.getTemplateInternal(baseName)
 		if err == nil {
 			template.Parent = baseTemplate
+			// 处理块重写
+			te.processBlockOverrides(template, baseTemplate)
 		}
 	}
 
 	return nil
+}
+
+// processBlockOverrides 处理块重写
+func (te *TemplateEngine) processBlockOverrides(childTemplate, parentTemplate *Template) {
+	// 遍历子模板的块定义，检查是否重写父模板的块
+	for blockName, childBlock := range childTemplate.DefinedBlocks {
+		if parentBlock, exists := parentTemplate.DefinedBlocks[blockName]; exists {
+			// 标记父模板块被重写
+			parentBlock.IsOverridden = true
+			parentBlock.Content = childBlock.Content
+		}
+	}
+
+	// 递归处理父模板的父模板
+	if parentTemplate.Parent != nil {
+		te.processBlockOverrides(childTemplate, parentTemplate.Parent)
+	}
 }
 
 // RenderToDocument 渲染模板到新文档
@@ -261,16 +313,26 @@ func (te *TemplateEngine) RenderToDocument(templateName string, data *TemplateDa
 
 // renderTemplate 渲染模板
 func (te *TemplateEngine) renderTemplate(template *Template, data *TemplateData) (string, error) {
-	content := template.Content
+	var content string
 
-	// 处理继承
+	// 处理继承：如果有父模板，使用父模板作为基础
 	if template.Parent != nil {
+		// 渲染父模板作为基础内容
 		parentContent, err := te.renderTemplate(template.Parent, data)
 		if err != nil {
 			return "", err
 		}
-		content = parentContent + "\n" + content
+		content = parentContent
+
+		// 应用子模板的块重写到父模板内容中
+		content = te.applyBlockOverrides(content, template)
+	} else {
+		// 没有父模板，直接使用当前模板内容
+		content = template.Content
 	}
+
+	// 渲染块定义
+	content = te.renderBlocks(content, template, data)
 
 	// 渲染变量
 	content = te.renderVariables(content, data.Variables)
@@ -282,6 +344,50 @@ func (te *TemplateEngine) renderTemplate(template *Template, data *TemplateData)
 	content = te.renderConditionals(content, data.Conditions)
 
 	return content, nil
+}
+
+// applyBlockOverrides 将子模板的块重写应用到父模板内容中
+func (te *TemplateEngine) applyBlockOverrides(content string, template *Template) string {
+	// 将子模板的块内容替换父模板中对应的块占位符
+	blockPattern := regexp.MustCompile(`(?s)\{\{#block\s+"([^"]+)"\}\}.*?\{\{/block\}\}`)
+
+	return blockPattern.ReplaceAllStringFunc(content, func(match string) string {
+		matches := blockPattern.FindStringSubmatch(match)
+		if len(matches) >= 2 {
+			blockName := matches[1]
+			// 如果子模板中定义了这个块，使用子模板的内容
+			if childBlock, exists := template.DefinedBlocks[blockName]; exists {
+				return childBlock.Content
+			}
+		}
+		return match // 保持原样
+	})
+}
+
+// renderBlocks 渲染块定义
+func (te *TemplateEngine) renderBlocks(content string, template *Template, data *TemplateData) string {
+	blockPattern := regexp.MustCompile(`(?s)\{\{#block\s+"([^"]+)"\}\}(.*?)\{\{/block\}\}`)
+
+	return blockPattern.ReplaceAllStringFunc(content, func(match string) string {
+		matches := blockPattern.FindStringSubmatch(match)
+		if len(matches) >= 3 {
+			blockName := matches[1]
+			blockContent := matches[2]
+
+			// 检查是否有定义的块
+			if block, exists := template.DefinedBlocks[blockName]; exists {
+				// 如果块被重写，使用重写的内容，否则使用默认内容
+				if block.IsOverridden {
+					return block.Content
+				}
+				return block.DefaultContent
+			}
+
+			// 如果没有定义块，使用原始内容
+			return blockContent
+		}
+		return match
+	})
 }
 
 // renderVariables 渲染变量
@@ -431,6 +537,11 @@ func (te *TemplateEngine) ValidateTemplate(template *Template) error {
 		return WrapErrorWithContext("validate_template", err, template.Name)
 	}
 
+	// 检查块语句配对
+	if err := te.validateBlockStatements(content); err != nil {
+		return WrapErrorWithContext("validate_template", err, template.Name)
+	}
+
 	// 检查if语句配对
 	if err := te.validateIfStatements(content); err != nil {
 		return WrapErrorWithContext("validate_template", err, template.Name)
@@ -451,6 +562,18 @@ func (te *TemplateEngine) validateBrackets(content string) error {
 
 	if openCount != closeCount {
 		return NewValidationError("brackets", content, "mismatched template brackets")
+	}
+
+	return nil
+}
+
+// validateBlockStatements 验证块语句配对
+func (te *TemplateEngine) validateBlockStatements(content string) error {
+	blockCount := len(regexp.MustCompile(`\{\{#block\s+"[^"]+"\}\}`).FindAllString(content, -1))
+	endblockCount := len(regexp.MustCompile(`\{\{/block\}\}`).FindAllString(content, -1))
+
+	if blockCount != endblockCount {
+		return NewValidationError("block_statements", content, "mismatched block/endblock statements")
 	}
 
 	return nil
