@@ -18,6 +18,8 @@ output/
 
 .vscode/
 
+unzip_tool.exe
+
 # Go相关
 *.exe
 *.exe~

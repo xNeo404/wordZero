@@ -104,11 +104,12 @@ type Justification struct {
 
 // Run 表示一段文本
 type Run struct {
-	XMLName    xml.Name       `xml:"w:r"`
-	Properties *RunProperties `xml:"w:rPr,omitempty"`
-	Text       Text           `xml:"w:t,omitempty"`
-	FieldChar  *FieldChar     `xml:"w:fldChar,omitempty"`
-	InstrText  *InstrText     `xml:"w:instrText,omitempty"`
+	XMLName    xml.Name        `xml:"w:r"`
+	Properties *RunProperties  `xml:"w:rPr,omitempty"`
+	Text       Text            `xml:"w:t,omitempty"`
+	Drawing    *DrawingElement `xml:"w:drawing,omitempty"`
+	FieldChar  *FieldChar      `xml:"w:fldChar,omitempty"`
+	InstrText  *InstrText      `xml:"w:instrText,omitempty"`
 }
 
 // RunProperties 文本属性
@@ -1633,12 +1634,20 @@ func (d *Document) serializeDocument() error {
 		XMLName  xml.Name `xml:"w:document"`
 		Xmlns    string   `xml:"xmlns:w,attr"`
 		XmlnsW15 string   `xml:"xmlns:w15,attr"`
+		XmlnsWP  string   `xml:"xmlns:wp,attr"`
+		XmlnsA   string   `xml:"xmlns:a,attr"`
+		XmlnsPic string   `xml:"xmlns:pic,attr"`
+		XmlnsR   string   `xml:"xmlns:r,attr"`
 		Body     *Body    `xml:"w:body"`
 	}
 
 	doc := documentXML{
 		Xmlns:    "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
 		XmlnsW15: "http://schemas.microsoft.com/office/word/2012/wordml",
+		XmlnsWP:  "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+		XmlnsA:   "http://schemas.openxmlformats.org/drawingml/2006/main",
+		XmlnsPic: "http://schemas.openxmlformats.org/drawingml/2006/picture",
+		XmlnsR:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
 		Body:     d.Body,
 	}
 

@@ -112,6 +112,15 @@
 ### 结构化文档标签 ✨ 新增功能
 - [`CreateTOCSDT(title string, maxLevel int)`](sdt.go) - 创建目录SDT结构
 
+### 图片操作功能 ✨ 新增功能
+- [`AddImageFromFile(filePath string, config *ImageConfig)`](image.go) - 从文件添加图片
+- [`AddImageFromData(imageData []byte, fileName string, format ImageFormat, width, height int, config *ImageConfig)`](image.go) - 从数据添加图片
+- [`ResizeImage(imageInfo *ImageInfo, size *ImageSize)`](image.go) - 调整图片大小
+- [`SetImagePosition(imageInfo *ImageInfo, position ImagePosition, offsetX, offsetY float64)`](image.go) - 设置图片位置
+- [`SetImageWrapText(imageInfo *ImageInfo, wrapText ImageWrapText)`](image.go) - 设置图片文字环绕
+- [`SetImageAltText(imageInfo *ImageInfo, altText string)`](image.go) - 设置图片替代文字
+- [`SetImageTitle(imageInfo *ImageInfo, title string)`](image.go) - 设置图片标题
+
 ## 段落操作方法
 
 ### 段落格式设置
@@ -383,6 +392,15 @@ type CellInfo struct {
 - `HyperlinkField` - 超链接域
 - `PageRefField` - 页码引用域
 
+### 图片配置 ✨ 新增
+- `ImageConfig` - 图片配置
+- `ImageSize` - 图片尺寸配置
+- `ImageFormat` - 图片格式（PNG、JPEG、GIF）
+- `ImagePosition` - 图片位置（inline、floatLeft、floatRight）
+- `ImageWrapText` - 文字环绕类型（none、square、tight、topAndBottom）
+- `ImageInfo` - 图片信息结构
+- `AlignmentType` - 对齐方式（left、center、right、justify）
+
 ## 使用示例
 
 ```go
@@ -447,6 +465,53 @@ doc.AddBulletList("列表项1", 0, document.BulletTypeDot)
 doc.AddBulletList("列表项2", 1, document.BulletTypeCircle)
 
 // 添加有序列表
+doc.AddNumberedList("编号项1", 0, document.ListTypeNumber)
+
+// ✨ 新增：图片示例
+// 从文件添加图片
+imageInfo, err := doc.AddImageFromFile("path/to/image.png", &document.ImageConfig{
+    Size: &document.ImageSize{
+        Width:  100.0, // 100毫米宽度
+        Height: 75.0,  // 75毫米高度
+    },
+    Position: document.ImagePositionInline,
+    WrapText: document.ImageWrapNone,
+    AltText:  "示例图片",
+    Title:    "这是一个示例图片",
+})
+
+// 从数据添加图片
+imageData := []byte{...} // 图片二进制数据
+imageInfo2, err := doc.AddImageFromData(
+    imageData,
+    "example.png",
+    document.ImageFormatPNG,
+    200, 150, // 原始像素尺寸
+    &document.ImageConfig{
+        Size: &document.ImageSize{
+            Width:           60.0, // 只设置宽度
+            KeepAspectRatio: true, // 保持长宽比
+        },
+        AltText: "数据图片",
+    },
+)
+
+// 调整图片大小
+err = doc.ResizeImage(imageInfo, &document.ImageSize{
+    Width:  80.0,
+    Height: 60.0,
+})
+
+// 设置图片属性
+err = doc.SetImagePosition(imageInfo, document.ImagePositionFloatLeft, 5.0, 0.0)
+err = doc.SetImageWrapText(imageInfo, document.ImageWrapSquare)
+err = doc.SetImageAltText(imageInfo, "更新的替代文字")
+err = doc.SetImageTitle(imageInfo, "更新的标题")
+
+// ✨ 新增：设置图片对齐方式（仅适用于嵌入式图片）
+err = doc.SetImageAlignment(imageInfo, document.AlignCenter)  // 居中对齐
+err = doc.SetImageAlignment(imageInfo, document.AlignLeft)    // 左对齐
+err = doc.SetImageAlignment(imageInfo, document.AlignRight)   // 右对齐
 doc.AddNumberedList("第一项", 0, document.ListTypeDecimal)
 doc.AddNumberedList("第二项", 0, document.ListTypeDecimal)
 
@@ -478,4 +543,8 @@ doc.Save("example.docx")
 6. 目录功能需要先添加带书签的标题，然后调用生成目录方法
 7. 脚注和尾注会自动编号，支持多种编号格式和重启规则
 8. 列表支持多级嵌套，最多支持9级缩进
-9. 结构化文档标签主要用于目录等特殊功能的实现 
+9. 结构化文档标签主要用于目录等特殊功能的实现
+10. 图片支持PNG、JPEG、GIF格式，会自动嵌入到文档中
+11. 图片尺寸可以用毫米或像素指定，支持保持长宽比的缩放
+12. 图片位置支持嵌入式、左浮动、右浮动等多种布局方式
+13. 图片对齐功能仅适用于嵌入式图片（ImagePositionInline），浮动图片请使用位置控制 
