@@ -3,8 +3,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#测试)
-[![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](wordZero.wiki/13-性能基准测试)
-[![Performance](https://img.shields.io/badge/Performance-Golang%20优胜-brightgreen.svg)](wordZero.wiki/13-性能基准测试)
+[![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试)
+[![Performance](https://img.shields.io/badge/Performance-Golang%20优胜-brightgreen.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
 
 ## 项目介绍
@@ -131,11 +131,11 @@ doc.Save("sales_report.docx")
 ## 文档和示例
 
 ### 📚 完整文档
-- [**📖 Wiki文档**](wordZero.wiki/) - 完整的使用文档和API参考
-- [**🚀 快速开始**](wordZero.wiki/01-快速开始) - 新手入门指南
-- [**⚡ 功能特性详览**](wordZero.wiki/14-功能特性详览) - 所有功能的详细说明
-- [**📊 性能基准测试**](wordZero.wiki/13-性能基准测试) - 跨语言性能对比分析
-- [**🏗️ 项目结构详解**](wordZero.wiki/15-项目结构详解) - 项目架构和代码组织
+- [**📖 Wiki文档**](https://github.com/ZeroHawkeye/wordZero/wiki) - 完整的使用文档和API参考
+- [**🚀 快速开始**](https://github.com/ZeroHawkeye/wordZero/wiki/01-快速开始) - 新手入门指南
+- [**⚡ 功能特性详览**](https://github.com/ZeroHawkeye/wordZero/wiki/14-功能特性详览) - 所有功能的详细说明
+- [**📊 性能基准测试**](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试) - 跨语言性能对比分析
+- [**🏗️ 项目结构详解**](https://github.com/ZeroHawkeye/wordZero/wiki/15-项目结构详解) - 项目架构和代码组织
 
 ### 💡 使用示例
 查看 `examples/` 目录下的示例代码：
@@ -183,7 +183,7 @@ go run ./examples/template_inheritance_demo/
 - 图形绘制功能
 - 多语言和国际化支持
 
-👉 **查看完整功能列表**: [功能特性详览](wordZero.wiki/14-功能特性详览)
+👉 **查看完整功能列表**: [功能特性详览](https://github.com/ZeroHawkeye/wordZero/wiki/14-功能特性详览)
 
 ## 性能表现
 
@@ -195,7 +195,7 @@ WordZero 在性能方面表现卓越，通过完整的基准测试验证：
 | JavaScript | 9.63ms | 3.67× |
 | Python | 55.98ms | 21.37× |
 
-👉 **查看详细性能分析**: [性能基准测试](wordZero.wiki/13-性能基准测试)
+👉 **查看详细性能分析**: [性能基准测试](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试)
 
 ## 项目结构
 
@@ -210,7 +210,7 @@ wordZero/
 └── wordZero.wiki/         # 完整文档
 ```
 
-👉 **查看详细结构说明**: [项目结构详解](wordZero.wiki/15-项目结构详解)
+👉 **查看详细结构说明**: [项目结构详解](https://github.com/ZeroHawkeye/wordZero/wiki/15-项目结构详解)
 
 ## 贡献指南
 
@@ -228,7 +228,7 @@ wordZero/
 ---
 
 **更多资源**:
-- 📖 [完整文档](wordZero.wiki/)
-- 🔧 [API参考](wordZero.wiki/10-API参考)
-- 💡 [最佳实践](wordZero.wiki/09-最佳实践)
+- 📖 [完整文档](https://github.com/ZeroHawkeye/wordZero/wiki)
+- 🔧 [API参考](https://github.com/ZeroHawkeye/wordZero/wiki/10-API参考)
+- 💡 [最佳实践](https://github.com/ZeroHawkeye/wordZero/wiki/09-最佳实践)
 - 📝 [更新日志](CHANGELOG.md)
