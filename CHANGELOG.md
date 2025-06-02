@@ -1,5 +1,102 @@
 # WordZero 更新日志
 
+## [v1.3.3] - 2025-06-02
+
+### 🐛 问题修复
+
+#### 页面设置保存和加载问题修复 ✨ **重要修复**
+- **修复问题**: 解决了页面设置在文档保存和重新加载后丢失的问题
+- **影响范围**: 主要影响页面配置功能，包括页面尺寸、方向、边距等设置
+- **错误表现**: 
+  - 设置页面为Letter横向，保存后重新打开变成A4纵向
+  - XML结构中SectionProperties位置不正确
+  - 页面设置解析失败，返回默认配置
+- **根本原因**:
+  - `getSectionProperties()` 方法只检查Elements数组的最后一个元素
+  - 文档序列化时SectionProperties被放在body开头，违反了Word XML规范
+  - 解析时无法正确找到SectionProperties元素
+- **修复方案**:
+  - 修改 `getSectionProperties()` 方法，在整个Elements数组中查找SectionProperties
+  - 优化 `Body.MarshalXML()` 方法，确保SectionProperties始终位于body末尾
+  - 遵循OpenXML规范，将sectPr放在正确位置
+- **修复后效果**:
+  - 页面设置保存后正确加载：Letter横向 → Letter横向 ✓
+  - XML结构符合Word标准：`<w:body><w:p>...</w:p><w:sectPr>...</w:sectPr></w:body>`
+  - 所有页面配置（尺寸、方向、边距等）正确保持
+
+#### 技术细节
+- **修改文件**: 
+  - `pkg/document/page.go` - 修复 `getSectionProperties()` 方法
+  - `pkg/document/document.go` - 优化 `Body.MarshalXML()` 序列化逻辑
+- **修改内容**: 
+  - 在Elements数组中全局搜索SectionProperties而非只检查最后一个元素
+  - 序列化时分离SectionProperties和其他元素，确保sectPr在body末尾
+  - 移除位置假设，提高容错性
+- **影响功能**: 
+  - 所有页面设置功能（SetPageSettings, GetPageSettings等）
+  - 文档保存和加载的完整性
+  - XML文档结构的规范性
+
+### 🔍 质量改进
+
+#### XML结构规范性
+- ✅ **符合OpenXML规范**: SectionProperties现在正确位于body末尾
+- ✅ **文档结构完整性**: 页面设置在保存/加载过程中保持完整
+- ✅ **解析稳定性**: 即使XML结构有变化也能正确解析SectionProperties
+- ✅ **Word兼容性**: 生成的文档完全符合Microsoft Word和WPS的要求
+
+#### 测试验证
+- 通过 `TestPageSettingsIntegration` 验证修复效果
+- 使用 `TestDebugPageSettings` 进行详细调试验证
+- 确认页面设置在完整的保存/加载周期中保持正确
+
+---
+
+## [v1.3.2] - 2025-06-02
+
+### 🐛 问题修复
+
+#### 模板引擎循环内条件表达式修复 ✨ **重要修复**
+- **修复问题**: 解决了模板引擎中循环内部条件表达式无法正确渲染的问题
+- **影响范围**: 主要影响使用复杂模板的场景，特别是 `{{#each}}` 循环内包含 `{{#if}}` 条件语句
+- **错误表现**: 
+  - 循环内的条件表达式保持原始模板语法，未被正确渲染
+  - 例如：`{{#if isLeader}}👑 团队负责人{{/if}}` 在循环中不生效
+- **修复方案**:
+  - 优化 `renderLoopConditionals()` 函数的布尔值转换逻辑
+  - 调整模板渲染顺序，先处理循环语句，再处理条件语句
+  - 改进条件表达式的数据类型支持（字符串、数字、布尔值等）
+- **修复后效果**:
+  - 循环内条件表达式正确渲染：`{{#each teamMembers}}{{#if isLeader}}👑 团队负责人{{/if}}{{/each}}`
+  - 支持多种数据类型的条件判断：`bool`, `string`, `int`, `int64`, `float64`
+  - 完美支持嵌套的条件和循环结构
+
+#### 技术细节
+- **修改文件**: `pkg/document/template.go`
+- **修改内容**: 
+  - 优化 `renderLoopConditionals()` 函数的类型判断逻辑
+  - 调整 `renderTemplate()` 中的渲染顺序
+  - 简化 `renderConditionals()` 函数，移除不必要的循环检测
+- **影响功能**: 
+  - 模板引擎的循环内条件渲染
+  - 复杂模板的嵌套结构处理
+  - 所有使用条件表达式的模板功能
+
+### 🔍 质量改进
+
+#### 模板引擎稳定性
+- ✅ **条件表达式完整支持**: 循环内外的条件表达式都能正确工作
+- ✅ **数据类型兼容性**: 支持多种数据类型的条件判断
+- ✅ **嵌套结构支持**: 完美支持条件语句和循环语句的任意嵌套
+- ✅ **渲染顺序优化**: 确保模板元素按正确顺序处理
+
+#### 测试验证
+- 通过 `test_loop_condition.go` 验证修复效果
+- 使用复杂模板演示验证嵌套结构
+- 确认所有模板测试用例通过
+
+---
+
 ## [v1.3.1] - 2025-05-30
 
 ### 🐛 问题修复

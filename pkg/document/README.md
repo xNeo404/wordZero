@@ -112,6 +112,38 @@
 ### 结构化文档标签 ✨ 新增功能
 - [`CreateTOCSDT(title string, maxLevel int)`](sdt.go) - 创建目录SDT结构
 
+### 模板功能 ✨ 新增功能
+- [`NewTemplateEngine()`](template.go) - 创建新的模板引擎
+- [`LoadTemplate(name, content string)`](template.go) - 从字符串加载模板
+- [`LoadTemplateFromDocument(name string, doc *Document)`](template.go) - 从现有文档创建模板
+- [`GetTemplate(name string)`](template.go) - 获取缓存的模板
+- [`RenderToDocument(templateName string, data *TemplateData)`](template.go) - 渲染模板到新文档
+- [`ValidateTemplate(template *Template)`](template.go) - 验证模板语法
+- [`ClearCache()`](template.go) - 清空模板缓存
+- [`RemoveTemplate(name string)`](template.go) - 移除指定模板
+
+#### 模板引擎功能特性 ✨
+**变量替换**: 支持 `{{变量名}}` 语法进行动态内容替换
+**条件语句**: 支持 `{{#if 条件}}...{{/if}}` 语法进行条件渲染
+**循环语句**: 支持 `{{#each 列表}}...{{/each}}` 语法进行列表渲染
+**模板继承**: 支持 `{{extends "基础模板"}}` 语法进行模板继承
+**循环内条件**: 完美支持循环内部的条件表达式，如 `{{#each items}}{{#if isActive}}...{{/if}}{{/each}}`
+**数据类型支持**: 支持字符串、数字、布尔值、对象等多种数据类型
+**结构体绑定**: 支持从Go结构体自动生成模板数据
+
+### 模板数据操作
+- [`NewTemplateData()`](template.go) - 创建新的模板数据
+- [`SetVariable(name string, value interface{})`](template.go) - 设置变量
+- [`SetList(name string, list []interface{})`](template.go) - 设置列表
+- [`SetCondition(name string, value bool)`](template.go) - 设置条件
+- [`SetVariables(variables map[string]interface{})`](template.go) - 批量设置变量
+- [`GetVariable(name string)`](template.go) - 获取变量
+- [`GetList(name string)`](template.go) - 获取列表
+- [`GetCondition(name string)`](template.go) - 获取条件
+- [`Merge(other *TemplateData)`](template.go) - 合并模板数据
+- [`Clear()`](template.go) - 清空模板数据
+- [`FromStruct(data interface{})`](template.go) - 从结构体生成模板数据
+
 ### 图片操作功能 ✨ 新增功能
 - [`AddImageFromFile(filePath string, config *ImageConfig)`](image.go) - 从文件添加图片
 - [`AddImageFromData(imageData []byte, fileName string, format ImageFormat, width, height int, config *ImageConfig)`](image.go) - 从数据添加图片

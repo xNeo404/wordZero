@@ -3,6 +3,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#测试)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
 
 ## 项目介绍
 
@@ -52,6 +53,7 @@ wordZero/
 │   │   ├── sdt.go           # 结构化文档标签 ✨ 新增
 │   │   ├── field.go         # 域字段功能 ✨ 新增
 │   │   ├── properties.go    # 文档属性管理 ✨ 新增
+│   │   ├── template.go      # 模板功能 ✨ 新增
 │   │   ├── errors.go        # 错误定义和处理
 │   │   ├── logger.go        # 日志系统
 │   │   ├── doc.go           # 包文档
@@ -84,12 +86,15 @@ wordZero/
 │   │   └── main.go
 │   ├── advanced_features/   # 高级功能综合示例 ✨ 新增
 │   │   └── main.go
+│   ├── template_demo/       # 模板功能演示 ✨ 规划中
+│   │   └── main.go
 │   ├── basic_usage.go       # 基础使用示例
 │   └── output/             # 示例输出文件目录
 ├── test/                    # 集成测试文件
 │   ├── document_test.go     # 文档操作集成测试
 │   ├── text_formatting_test.go # 文本格式化集成测试
-│   └── table_style_test.go  # 表格样式功能集成测试
+│   ├── table_style_test.go  # 表格样式功能集成测试
+│   └── template_test.go     # 模板功能集成测试 ✨ 新增
 ├── .gitignore              # Git忽略文件配置
 ├── go.mod                  # Go模块定义
 ├── LICENSE                 # MIT许可证
@@ -325,6 +330,33 @@ wordZero/
   - [x] 域字段的开始、分隔、结束标记
 - [x] **页码设置**（已集成到页眉页脚功能中）
 
+#### 模板功能 ✨ **新实现**
+- [x] **基础模板引擎** ✨ **新实现**
+  - [x] 变量替换：`{{变量名}}` 语法支持
+  - [x] 条件语句：`{{#if 条件}}...{{/if}}` 支持
+  - [x] 循环语句：`{{#each 列表}}...{{/each}}` 支持
+  - [x] 模板继承：基础模板和子模板扩展
+  - [x] 循环上下文变量：`{{@index}}`、`{{@first}}`、`{{@last}}`、`{{this}}`
+  - [x] 嵌套模板语法支持
+- [x] **模板操作** ✨ **新实现**
+  - [x] 从字符串加载模板
+  - [x] 从现有文档创建模板
+  - [x] 模板渲染和变量填充
+  - [x] 模板验证和错误处理
+  - [x] 模板缓存机制
+  - [x] 模板数据绑定和管理
+- [x] **数据绑定** ✨ **新实现**
+  - [x] 基础数据类型支持（字符串、数字、布尔值）
+  - [x] 复杂数据结构支持（map、slice）
+  - [x] 结构体自动绑定
+  - [x] 模板数据合并和清空
+  - [x] 批量变量设置
+- [x] **模板语法** ✨ **新实现**
+  - [x] 正则表达式解析引擎
+  - [x] 语法验证和错误检查
+  - [x] 嵌套条件和循环支持
+  - [x] 模板块管理和组织
+
 ## 使用示例
 
 查看 `examples/` 目录下的示例代码：
@@ -344,6 +376,14 @@ wordZero/
   - 脚注尾注功能演示
   - 列表和编号演示
   - 结构化文档标签演示
+- `examples/template_demo/` - **模板功能演示** ✨ **新增**
+  - 基础变量替换演示
+  - 条件语句功能演示
+  - 循环语句功能演示
+  - 模板继承功能演示
+  - 复杂模板综合应用演示
+  - 从现有文档创建模板演示
+  - 结构体数据绑定演示
 
 运行示例：
 ```bash
@@ -376,6 +416,9 @@ go run ./examples/page_settings/
 
 # 运行高级功能综合演示
 go run ./examples/advanced_features/
+
+# 运行模板功能演示
+go run ./examples/template_demo/
 ```
 
 ## 贡献指南

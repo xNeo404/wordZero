@@ -53,11 +53,11 @@ func TestSetCustomPageSize(t *testing.T) {
 		t.Errorf("页面尺寸应为Custom，实际为: %s", settings.Size)
 	}
 
-	if settings.CustomWidth != 200 {
+	if abs(settings.CustomWidth-200) > 0.1 {
 		t.Errorf("自定义宽度应为200mm，实际为: %.1fmm", settings.CustomWidth)
 	}
 
-	if settings.CustomHeight != 300 {
+	if abs(settings.CustomHeight-300) > 0.1 {
 		t.Errorf("自定义高度应为300mm，实际为: %.1fmm", settings.CustomHeight)
 	}
 

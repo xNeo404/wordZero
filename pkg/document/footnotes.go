@@ -111,6 +111,110 @@ const (
 	FootnotePositionDocumentEnd FootnotePosition = "docEnd"
 )
 
+// FootnoteProperties 脚注属性
+type FootnoteProperties struct {
+	NumberFormat string `xml:"w:numFmt,attr,omitempty"`
+	StartNumber  int    `xml:"w:numStart,attr,omitempty"`
+	RestartRule  string `xml:"w:numRestart,attr,omitempty"`
+	Position     string `xml:"w:pos,attr,omitempty"`
+}
+
+// EndnoteProperties 尾注属性
+type EndnoteProperties struct {
+	NumberFormat string `xml:"w:numFmt,attr,omitempty"`
+	StartNumber  int    `xml:"w:numStart,attr,omitempty"`
+	RestartRule  string `xml:"w:numRestart,attr,omitempty"`
+	Position     string `xml:"w:pos,attr,omitempty"`
+}
+
+// Settings 文档设置XML结构
+type Settings struct {
+	XMLName                 xml.Name                 `xml:"w:settings"`
+	Xmlns                   string                   `xml:"xmlns:w,attr"`
+	DefaultTabStop          *DefaultTabStop          `xml:"w:defaultTabStop,omitempty"`
+	CharacterSpacingControl *CharacterSpacingControl `xml:"w:characterSpacingControl,omitempty"`
+	FootnotePr              *FootnotePr              `xml:"w:footnotePr,omitempty"`
+	EndnotePr               *EndnotePr               `xml:"w:endnotePr,omitempty"`
+}
+
+// DefaultTabStop 默认制表位设置
+type DefaultTabStop struct {
+	XMLName xml.Name `xml:"w:defaultTabStop"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// CharacterSpacingControl 字符间距控制
+type CharacterSpacingControl struct {
+	XMLName xml.Name `xml:"w:characterSpacingControl"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// FootnotePr 脚注属性设置
+type FootnotePr struct {
+	XMLName    xml.Name            `xml:"w:footnotePr"`
+	NumFmt     *FootnoteNumFmt     `xml:"w:numFmt,omitempty"`
+	NumStart   *FootnoteNumStart   `xml:"w:numStart,omitempty"`
+	NumRestart *FootnoteNumRestart `xml:"w:numRestart,omitempty"`
+	Pos        *FootnotePos        `xml:"w:pos,omitempty"`
+}
+
+// EndnotePr 尾注属性设置
+type EndnotePr struct {
+	XMLName    xml.Name           `xml:"w:endnotePr"`
+	NumFmt     *EndnoteNumFmt     `xml:"w:numFmt,omitempty"`
+	NumStart   *EndnoteNumStart   `xml:"w:numStart,omitempty"`
+	NumRestart *EndnoteNumRestart `xml:"w:numRestart,omitempty"`
+	Pos        *EndnotePos        `xml:"w:pos,omitempty"`
+}
+
+// FootnoteNumFmt 脚注编号格式
+type FootnoteNumFmt struct {
+	XMLName xml.Name `xml:"w:numFmt"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// FootnoteNumStart 脚注起始编号
+type FootnoteNumStart struct {
+	XMLName xml.Name `xml:"w:numStart"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// FootnoteNumRestart 脚注重新开始规则
+type FootnoteNumRestart struct {
+	XMLName xml.Name `xml:"w:numRestart"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// FootnotePos 脚注位置
+type FootnotePos struct {
+	XMLName xml.Name `xml:"w:pos"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// EndnoteNumFmt 尾注编号格式
+type EndnoteNumFmt struct {
+	XMLName xml.Name `xml:"w:numFmt"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// EndnoteNumStart 尾注起始编号
+type EndnoteNumStart struct {
+	XMLName xml.Name `xml:"w:numStart"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// EndnoteNumRestart 尾注重新开始规则
+type EndnoteNumRestart struct {
+	XMLName xml.Name `xml:"w:numRestart"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// EndnotePos 尾注位置
+type EndnotePos struct {
+	XMLName xml.Name `xml:"w:pos"`
+	Val     string   `xml:"w:val,attr"`
+}
+
 // 全局脚注/尾注管理器
 var globalFootnoteManager *FootnoteManager
 
@@ -228,9 +332,29 @@ func (d *Document) SetFootnoteConfig(config *FootnoteConfig) error {
 		config = DefaultFootnoteConfig()
 	}
 
-	// 创建脚注属性
-	// 这里需要创建脚注设置的XML结构
-	// 简化处理，实际需要在document.xml中添加脚注属性设置
+	// 确保文档设置已初始化
+	d.ensureSettingsInitialized()
+
+	// 创建脚注属性XML结构
+	footnoteProps := &FootnoteProperties{
+		NumberFormat: string(config.NumberFormat),
+		StartNumber:  config.StartNumber,
+		RestartRule:  string(config.RestartEach),
+		Position:     string(config.Position),
+	}
+
+	// 创建尾注属性XML结构
+	endnoteProps := &EndnoteProperties{
+		NumberFormat: string(config.NumberFormat),
+		StartNumber:  config.StartNumber,
+		RestartRule:  string(config.RestartEach),
+		Position:     string(config.Position),
+	}
+
+	// 更新文档设置
+	if err := d.updateDocumentSettings(footnoteProps, endnoteProps); err != nil {
+		return fmt.Errorf("更新脚注配置失败: %v", err)
+	}
 
 	return nil
 }
@@ -510,4 +634,161 @@ func (d *Document) RemoveEndnote(endnoteID string) error {
 	d.updateEndnotesFile()
 
 	return nil
+}
+
+// ensureSettingsInitialized 确保文档设置已初始化
+func (d *Document) ensureSettingsInitialized() {
+	// 检查settings.xml是否存在，如果不存在则创建默认设置
+	if _, exists := d.parts["word/settings.xml"]; !exists {
+		d.initializeSettings()
+	}
+}
+
+// initializeSettings 初始化文档设置
+func (d *Document) initializeSettings() {
+	// 创建默认设置
+	settings := d.createDefaultSettings()
+
+	// 保存设置
+	if err := d.saveSettings(settings); err != nil {
+		// 如果保存失败，使用原有的硬编码方式作为后备
+		settingsXML := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:defaultTabStop w:val="708"/>
+  <w:characterSpacingControl w:val="doNotCompress"/>
+</w:settings>`
+		d.parts["word/settings.xml"] = []byte(settingsXML)
+	}
+
+	// 添加内容类型
+	d.addContentType("word/settings.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml")
+
+	// 添加关系
+	d.addSettingsRelationship()
+}
+
+// updateDocumentSettings 更新文档设置中的脚注尾注配置
+func (d *Document) updateDocumentSettings(footnoteProps *FootnoteProperties, endnoteProps *EndnoteProperties) error {
+	// 解析现有的settings.xml
+	settings, err := d.parseSettings()
+	if err != nil {
+		return fmt.Errorf("解析设置文件失败: %v", err)
+	}
+
+	// 更新脚注设置
+	if footnoteProps != nil {
+		footnotePr := &FootnotePr{}
+
+		if footnoteProps.NumberFormat != "" {
+			footnotePr.NumFmt = &FootnoteNumFmt{Val: footnoteProps.NumberFormat}
+		}
+
+		if footnoteProps.StartNumber > 0 {
+			footnotePr.NumStart = &FootnoteNumStart{Val: strconv.Itoa(footnoteProps.StartNumber)}
+		}
+
+		if footnoteProps.RestartRule != "" {
+			footnotePr.NumRestart = &FootnoteNumRestart{Val: footnoteProps.RestartRule}
+		}
+
+		if footnoteProps.Position != "" {
+			footnotePr.Pos = &FootnotePos{Val: footnoteProps.Position}
+		}
+
+		settings.FootnotePr = footnotePr
+	}
+
+	// 更新尾注设置
+	if endnoteProps != nil {
+		endnotePr := &EndnotePr{}
+
+		if endnoteProps.NumberFormat != "" {
+			endnotePr.NumFmt = &EndnoteNumFmt{Val: endnoteProps.NumberFormat}
+		}
+
+		if endnoteProps.StartNumber > 0 {
+			endnotePr.NumStart = &EndnoteNumStart{Val: strconv.Itoa(endnoteProps.StartNumber)}
+		}
+
+		if endnoteProps.RestartRule != "" {
+			endnotePr.NumRestart = &EndnoteNumRestart{Val: endnoteProps.RestartRule}
+		}
+
+		if endnoteProps.Position != "" {
+			endnotePr.Pos = &EndnotePos{Val: endnoteProps.Position}
+		}
+
+		settings.EndnotePr = endnotePr
+	}
+
+	// 保存更新后的settings.xml
+	return d.saveSettings(settings)
+}
+
+// parseSettings 解析settings.xml文件
+func (d *Document) parseSettings() (*Settings, error) {
+	settingsData, exists := d.parts["word/settings.xml"]
+	if !exists {
+		// 如果settings.xml不存在，返回默认设置
+		return d.createDefaultSettings(), nil
+	}
+
+	var settings Settings
+
+	// 直接使用xml.Unmarshal可能有命名空间问题，我们改用字符串替换的方式
+	// 将w:settings替换为settings等，然后用一个简化的结构来解析
+	settingsStr := string(settingsData)
+
+	// 如果XML中包含w:前缀，说明是序列化的XML，直接创建默认设置并更新
+	// 这是一个简化的处理方式，避免命名空间解析问题
+	if len(settingsStr) > 0 {
+		// 如果文件存在且不为空，我们使用默认设置作为基础
+		settings = *d.createDefaultSettings()
+
+		// 后续可以在这里添加更复杂的XML解析逻辑
+		// 暂时简化处理，返回默认设置
+		return &settings, nil
+	}
+
+	return d.createDefaultSettings(), nil
+}
+
+// createDefaultSettings 创建默认设置
+func (d *Document) createDefaultSettings() *Settings {
+	return &Settings{
+		Xmlns: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+		DefaultTabStop: &DefaultTabStop{
+			Val: "708",
+		},
+		CharacterSpacingControl: &CharacterSpacingControl{
+			Val: "doNotCompress",
+		},
+	}
+}
+
+// saveSettings 保存settings.xml文件
+func (d *Document) saveSettings(settings *Settings) error {
+	// 序列化为XML
+	settingsXML, err := xml.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("序列化settings.xml失败: %v", err)
+	}
+
+	// 添加XML声明
+	xmlDeclaration := []byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` + "\n")
+	d.parts["word/settings.xml"] = append(xmlDeclaration, settingsXML...)
+
+	return nil
+}
+
+// addSettingsRelationship 添加设置文件关系
+func (d *Document) addSettingsRelationship() {
+	relationshipID := fmt.Sprintf("rId%d", len(d.relationships.Relationships)+1)
+
+	relationship := Relationship{
+		ID:     relationshipID,
+		Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+		Target: "settings.xml",
+	}
+	d.relationships.Relationships = append(d.relationships.Relationships, relationship)
 }

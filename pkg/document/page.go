@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 // PageOrientation 页面方向类型
@@ -277,18 +278,20 @@ func (d *Document) SetGutterWidth(width float64) error {
 
 // getSectionProperties 获取或创建节属性
 func (d *Document) getSectionProperties() *SectionProperties {
-	// 检查文档主体的最后一个元素是否为SectionProperties
-	if d.Body != nil && len(d.Body.Elements) > 0 {
-		if sectPr, ok := d.Body.Elements[len(d.Body.Elements)-1].(*SectionProperties); ok {
+	if d.Body == nil {
+		return &SectionProperties{}
+	}
+
+	// 在Elements中查找已存在的SectionProperties（可能在任何位置）
+	for _, element := range d.Body.Elements {
+		if sectPr, ok := element.(*SectionProperties); ok {
 			return sectPr
 		}
 	}
 
-	// 创建新的节属性
+	// 如果没有找到，创建新的节属性并添加到末尾
 	sectPr := &SectionProperties{}
-	if d.Body != nil {
-		d.Body.Elements = append(d.Body.Elements, sectPr)
-	}
+	d.Body.Elements = append(d.Body.Elements, sectPr)
 
 	return sectPr
 }
@@ -378,11 +381,9 @@ func parseFloat(s string) float64 {
 		return 0
 	}
 
-	// 尝试解析为浮点数
-	if val, err := fmt.Sscanf(s, "%f", new(float64)); err == nil && val == 1 {
-		var result float64
-		fmt.Sscanf(s, "%f", &result)
-		return result
+	// 使用strconv.ParseFloat解析浮点数
+	if val, err := strconv.ParseFloat(s, 64); err == nil {
+		return val
 	}
 
 	return 0

@@ -44,9 +44,28 @@ func (b *Body) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		return err
 	}
 
-	// 序列化每个元素，保持顺序
+	// 分离SectionProperties和其他元素
+	var sectPr *SectionProperties
+	var otherElements []interface{}
+
 	for _, element := range b.Elements {
+		if sp, ok := element.(*SectionProperties); ok {
+			sectPr = sp // 保存最后一个SectionProperties
+		} else {
+			otherElements = append(otherElements, element)
+		}
+	}
+
+	// 先序列化其他元素（段落、表格等）
+	for _, element := range otherElements {
 		if err := e.Encode(element); err != nil {
+			return err
+		}
+	}
+
+	// 最后序列化SectionProperties（如果存在）
+	if sectPr != nil {
+		if err := e.Encode(sectPr); err != nil {
 			return err
 		}
 	}
@@ -936,6 +955,19 @@ func (p *Paragraph) SetIndentation(firstLineCm, leftCm, rightCm float64) {
 //	headingStyle := styleManager.GetStyle("Heading1")
 func (d *Document) GetStyleManager() *style.StyleManager {
 	return d.styleManager
+}
+
+// GetParts 获取文档部件映射
+//
+// 返回包含文档所有部件的映射，主要用于测试和调试。
+// 键是部件名称，值是部件内容的字节数组。
+//
+// 示例:
+//
+//	parts := doc.GetParts()
+//	settingsXML := parts["word/settings.xml"]
+func (d *Document) GetParts() map[string][]byte {
+	return d.parts
 }
 
 // initializeStructure 初始化文档基础结构
