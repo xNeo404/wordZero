@@ -605,37 +605,14 @@ func (te *TemplateEngine) validateEachStatements(content string) error {
 
 // documentToTemplateString 将文档转换为模板字符串
 func (te *TemplateEngine) documentToTemplateString(doc *Document) (string, error) {
-	var content strings.Builder
-
-	// 遍历文档的所有段落，生成模板字符串
-	for _, element := range doc.Body.Elements {
-		switch elem := element.(type) {
-		case *Paragraph:
-			// 处理段落
-			for _, run := range elem.Runs {
-				content.WriteString(run.Text.Content)
-			}
-			content.WriteString("\n")
-		case *Table:
-			// 处理表格
-			content.WriteString("{{#table}}\n")
-			for i, row := range elem.Rows {
-				content.WriteString(fmt.Sprintf("{{#row_%d}}\n", i))
-				for j := range row.Cells {
-					content.WriteString(fmt.Sprintf("{{cell_%d_%d}}", i, j))
-				}
-				content.WriteString("{{/row}}\n")
-			}
-			content.WriteString("{{/table}}\n")
-		}
-	}
-
-	return content.String(), nil
+	// 这里不再转换为纯字符串，而是保持原始文档结构
+	// 实际上我们应该直接在原文档上进行变量替换
+	return "", nil // 将在新的方法中处理
 }
 
 // cloneDocument 克隆文档
 func (te *TemplateEngine) cloneDocument(source *Document) *Document {
-	// 简单实现：创建新文档并复制基本结构
+	// 创建新文档
 	doc := New()
 
 	// 复制样式管理器
@@ -643,22 +620,316 @@ func (te *TemplateEngine) cloneDocument(source *Document) *Document {
 		doc.styleManager = source.styleManager
 	}
 
+	// 深度复制文档体元素
+	for _, element := range source.Body.Elements {
+		switch elem := element.(type) {
+		case *Paragraph:
+			// 复制段落
+			newPara := &Paragraph{
+				Properties: elem.Properties,
+				Runs:       make([]Run, len(elem.Runs)),
+			}
+			for i, run := range elem.Runs {
+				newRun := Run{
+					Properties: run.Properties,
+					Text:       Text{Content: run.Text.Content},
+				}
+				newPara.Runs[i] = newRun
+			}
+			doc.Body.Elements = append(doc.Body.Elements, newPara)
+
+		case *Table:
+			// 复制表格
+			newTable := &Table{
+				Properties: elem.Properties,
+				Grid:       elem.Grid,
+				Rows:       make([]TableRow, len(elem.Rows)),
+			}
+			for i, row := range elem.Rows {
+				newRow := TableRow{
+					Properties: row.Properties,
+					Cells:      make([]TableCell, len(row.Cells)),
+				}
+				for j, cell := range row.Cells {
+					newCell := TableCell{
+						Properties: cell.Properties,
+						Paragraphs: make([]Paragraph, len(cell.Paragraphs)),
+					}
+					for k, para := range cell.Paragraphs {
+						newPara := Paragraph{
+							Properties: para.Properties,
+							Runs:       make([]Run, len(para.Runs)),
+						}
+						for l, run := range para.Runs {
+							newRun := Run{
+								Properties: run.Properties,
+								Text:       Text{Content: run.Text.Content},
+							}
+							newPara.Runs[l] = newRun
+						}
+						newCell.Paragraphs[k] = newPara
+					}
+					newRow.Cells[j] = newCell
+				}
+				newTable.Rows[i] = newRow
+			}
+			doc.Body.Elements = append(doc.Body.Elements, newTable)
+		}
+	}
+
 	return doc
 }
 
 // applyRenderedContentToDocument 将渲染内容应用到文档
 func (te *TemplateEngine) applyRenderedContentToDocument(doc *Document, content string) error {
-	// 将渲染后的内容按行分割并添加到文档
-	lines := strings.Split(content, "\n")
+	// 这个方法将被新的结构化处理方法替代
+	return nil
+}
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			doc.AddParagraph(line)
+// RenderTemplateToDocument 渲染模板到新文档（新的主要方法）
+func (te *TemplateEngine) RenderTemplateToDocument(templateName string, data *TemplateData) (*Document, error) {
+	template, err := te.GetTemplate(templateName)
+	if err != nil {
+		return nil, WrapErrorWithContext("render_template_to_document", err, templateName)
+	}
+
+	// 如果有基础文档，克隆它并在其上进行变量替换
+	if template.BaseDoc != nil {
+		doc := te.cloneDocument(template.BaseDoc)
+
+		// 在文档结构中直接进行变量替换
+		err := te.replaceVariablesInDocument(doc, data)
+		if err != nil {
+			return nil, WrapErrorWithContext("render_template_to_document", err, templateName)
+		}
+
+		return doc, nil
+	}
+
+	// 如果没有基础文档，使用原有的方式
+	return te.RenderToDocument(templateName, data)
+}
+
+// replaceVariablesInDocument 在文档结构中直接替换变量
+func (te *TemplateEngine) replaceVariablesInDocument(doc *Document, data *TemplateData) error {
+	for _, element := range doc.Body.Elements {
+		switch elem := element.(type) {
+		case *Paragraph:
+			// 处理段落中的变量替换
+			err := te.replaceVariablesInParagraph(elem, data)
+			if err != nil {
+				return err
+			}
+
+		case *Table:
+			// 处理表格中的变量替换和模板语法
+			err := te.replaceVariablesInTable(elem, data)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
+}
+
+// replaceVariablesInParagraph 在段落中替换变量
+func (te *TemplateEngine) replaceVariablesInParagraph(para *Paragraph, data *TemplateData) error {
+	for i := range para.Runs {
+		if para.Runs[i].Text.Content != "" {
+			// 替换普通变量
+			para.Runs[i].Text.Content = te.renderVariables(para.Runs[i].Text.Content, data.Variables)
+
+			// 处理条件语句
+			para.Runs[i].Text.Content = te.renderConditionals(para.Runs[i].Text.Content, data.Conditions)
+		}
+	}
+
+	return nil
+}
+
+// replaceVariablesInTable 在表格中替换变量和处理表格模板
+func (te *TemplateEngine) replaceVariablesInTable(table *Table, data *TemplateData) error {
+	// 检查是否有表格循环模板
+	if len(table.Rows) > 0 && te.isTableTemplate(table) {
+		return te.renderTableTemplate(table, data)
+	}
+
+	// 普通表格变量替换
+	for i := range table.Rows {
+		for j := range table.Rows[i].Cells {
+			for k := range table.Rows[i].Cells[j].Paragraphs {
+				err := te.replaceVariablesInParagraph(&table.Rows[i].Cells[j].Paragraphs[k], data)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// isTableTemplate 检查表格是否包含模板语法
+func (te *TemplateEngine) isTableTemplate(table *Table) bool {
+	if len(table.Rows) == 0 {
+		return false
+	}
+
+	// 检查所有行是否包含循环语法
+	for _, row := range table.Rows {
+		for _, cell := range row.Cells {
+			for _, para := range cell.Paragraphs {
+				for _, run := range para.Runs {
+					if run.Text.Content != "" && te.containsTemplateLoop(run.Text.Content) {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// containsTemplateLoop 检查文本是否包含循环模板语法
+func (te *TemplateEngine) containsTemplateLoop(text string) bool {
+	eachPattern := regexp.MustCompile(`\{\{#each\s+\w+\}\}`)
+	return eachPattern.MatchString(text)
+}
+
+// renderTableTemplate 渲染表格模板
+func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) error {
+	if len(table.Rows) == 0 {
+		return nil
+	}
+
+	// 找到模板行（包含循环语法的行）
+	templateRowIndex := -1
+	var listVarName string
+
+	for i, row := range table.Rows {
+		found := false
+		for _, cell := range row.Cells {
+			for _, para := range cell.Paragraphs {
+				for _, run := range para.Runs {
+					if run.Text.Content != "" {
+						eachPattern := regexp.MustCompile(`\{\{#each\s+(\w+)\}\}`)
+						matches := eachPattern.FindStringSubmatch(run.Text.Content)
+						if len(matches) > 1 {
+							templateRowIndex = i
+							listVarName = matches[1]
+							found = true
+							break
+						}
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if templateRowIndex < 0 || listVarName == "" {
+		return nil
+	}
+
+	// 获取列表数据
+	listData, exists := data.Lists[listVarName]
+	if !exists || len(listData) == 0 {
+		// 删除模板行
+		table.Rows = append(table.Rows[:templateRowIndex], table.Rows[templateRowIndex+1:]...)
+		return nil
+	}
+
+	// 保存模板行
+	templateRow := table.Rows[templateRowIndex]
+	newRows := make([]TableRow, 0)
+
+	// 保留模板行之前的行
+	newRows = append(newRows, table.Rows[:templateRowIndex]...)
+
+	// 为每个数据项生成新行
+	for _, item := range listData {
+		newRow := te.cloneTableRow(&templateRow)
+
+		// 在新行中替换变量
+		if itemMap, ok := item.(map[string]interface{}); ok {
+			for i := range newRow.Cells {
+				for j := range newRow.Cells[i].Paragraphs {
+					for k := range newRow.Cells[i].Paragraphs[j].Runs {
+						if newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content != "" {
+							// 移除模板语法标记
+							content := newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content
+							content = regexp.MustCompile(`\{\{#each\s+\w+\}\}`).ReplaceAllString(content, "")
+							content = regexp.MustCompile(`\{\{/each\}\}`).ReplaceAllString(content, "")
+
+							// 替换变量
+							for key, value := range itemMap {
+								placeholder := fmt.Sprintf("{{%s}}", key)
+								content = strings.ReplaceAll(content, placeholder, te.interfaceToString(value))
+							}
+
+							newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content = content
+						}
+					}
+				}
+			}
+		}
+
+		newRows = append(newRows, *newRow)
+	}
+
+	// 保留模板行之后的行
+	newRows = append(newRows, table.Rows[templateRowIndex+1:]...)
+
+	// 更新表格行
+	table.Rows = newRows
+
+	return nil
+}
+
+// cloneTableRow 克隆表格行
+func (te *TemplateEngine) cloneTableRow(row *TableRow) *TableRow {
+	newRow := &TableRow{
+		Properties: row.Properties,
+		Cells:      make([]TableCell, len(row.Cells)),
+	}
+
+	for i, cell := range row.Cells {
+		newCell := TableCell{
+			Properties: cell.Properties,
+			Paragraphs: make([]Paragraph, len(cell.Paragraphs)),
+		}
+
+		for j, para := range cell.Paragraphs {
+			newPara := Paragraph{
+				Properties: para.Properties,
+				Runs:       make([]Run, len(para.Runs)),
+			}
+
+			for k, run := range para.Runs {
+				newRun := Run{
+					Properties: run.Properties,
+					Text:       Text{Content: run.Text.Content},
+				}
+				newPara.Runs[k] = newRun
+			}
+
+			newCell.Paragraphs[j] = newPara
+		}
+
+		newRow.Cells[i] = newCell
+	}
+
+	return newRow
 }
 
 // NewTemplateData 创建新的模板数据
