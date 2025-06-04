@@ -109,10 +109,11 @@ type ParagraphProperties struct {
 
 // Spacing 间距设置
 type Spacing struct {
-	XMLName xml.Name `xml:"w:spacing"`
-	Before  string   `xml:"w:before,attr,omitempty"`
-	After   string   `xml:"w:after,attr,omitempty"`
-	Line    string   `xml:"w:line,attr,omitempty"`
+	XMLName  xml.Name `xml:"w:spacing"`
+	Before   string   `xml:"w:before,attr,omitempty"`
+	After    string   `xml:"w:after,attr,omitempty"`
+	Line     string   `xml:"w:line,attr,omitempty"`
+	LineRule string   `xml:"w:lineRule,attr,omitempty"`
 }
 
 // Justification 对齐方式
@@ -135,9 +136,15 @@ type Run struct {
 type RunProperties struct {
 	XMLName    xml.Name    `xml:"w:rPr"`
 	Bold       *Bold       `xml:"w:b,omitempty"`
+	BoldCs     *BoldCs     `xml:"w:bCs,omitempty"`
 	Italic     *Italic     `xml:"w:i,omitempty"`
+	ItalicCs   *ItalicCs   `xml:"w:iCs,omitempty"`
+	Underline  *Underline  `xml:"w:u,omitempty"`
+	Strike     *Strike     `xml:"w:strike,omitempty"`
 	FontSize   *FontSize   `xml:"w:sz,omitempty"`
+	FontSizeCs *FontSizeCs `xml:"w:szCs,omitempty"`
 	Color      *Color      `xml:"w:color,omitempty"`
+	Highlight  *Highlight  `xml:"w:highlight,omitempty"`
 	FontFamily *FontFamily `xml:"w:rFonts,omitempty"`
 }
 
@@ -146,9 +153,30 @@ type Bold struct {
 	XMLName xml.Name `xml:"w:b"`
 }
 
+// BoldCs 复杂脚本粗体
+type BoldCs struct {
+	XMLName xml.Name `xml:"w:bCs"`
+}
+
 // Italic 斜体
 type Italic struct {
 	XMLName xml.Name `xml:"w:i"`
+}
+
+// ItalicCs 复杂脚本斜体
+type ItalicCs struct {
+	XMLName xml.Name `xml:"w:iCs"`
+}
+
+// Underline 下划线
+type Underline struct {
+	XMLName xml.Name `xml:"w:u"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// Strike 删除线
+type Strike struct {
+	XMLName xml.Name `xml:"w:strike"`
 }
 
 // FontSize 字体大小
@@ -157,9 +185,21 @@ type FontSize struct {
 	Val     string   `xml:"w:val,attr"`
 }
 
+// FontSizeCs 复杂脚本字体大小
+type FontSizeCs struct {
+	XMLName xml.Name `xml:"w:szCs"`
+	Val     string   `xml:"w:val,attr"`
+}
+
 // Color 颜色
 type Color struct {
 	XMLName xml.Name `xml:"w:color"`
+	Val     string   `xml:"w:val,attr"`
+}
+
+// Highlight 背景色
+type Highlight struct {
+	XMLName xml.Name `xml:"w:highlight"`
 	Val     string   `xml:"w:val,attr"`
 }
 
@@ -378,6 +418,13 @@ func Open(filename string) (*Document, error) {
 	if err := doc.parseDocument(); err != nil {
 		Errorf("解析文档失败: %s", filename)
 		return nil, WrapErrorWithContext("parse_document", err, filename)
+	}
+
+	// 解析样式文件
+	if err := doc.parseStyles(); err != nil {
+		Debugf("解析样式失败，使用默认样式: %v", err)
+		// 如果样式解析失败，重新初始化为默认样式
+		doc.styleManager = style.NewStyleManager()
 	}
 
 	Infof("成功打开文档: %s", filename)
@@ -1197,6 +1244,7 @@ func (d *Document) parseParagraphProperties(decoder *xml.Decoder, paragraph *Par
 				spacing.Before = getAttributeValue(t.Attr, "before")
 				spacing.After = getAttributeValue(t.Attr, "after")
 				spacing.Line = getAttributeValue(t.Attr, "line")
+				spacing.LineRule = getAttributeValue(t.Attr, "lineRule")
 				paragraph.Properties.Spacing = spacing
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
@@ -1295,8 +1343,29 @@ func (d *Document) parseRunProperties(decoder *xml.Decoder, run *Run) error {
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
 				}
+			case "bCs":
+				run.Properties.BoldCs = &BoldCs{}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
 			case "i":
 				run.Properties.Italic = &Italic{}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "iCs":
+				run.Properties.ItalicCs = &ItalicCs{}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "u":
+				val := getAttributeValue(t.Attr, "val")
+				run.Properties.Underline = &Underline{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "strike":
+				run.Properties.Strike = &Strike{}
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
 				}
@@ -1308,10 +1377,26 @@ func (d *Document) parseRunProperties(decoder *xml.Decoder, run *Run) error {
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
 				}
+			case "szCs":
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					run.Properties.FontSizeCs = &FontSizeCs{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
 			case "color":
 				val := getAttributeValue(t.Attr, "val")
 				if val != "" {
 					run.Properties.Color = &Color{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "highlight":
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					run.Properties.Highlight = &Highlight{Val: val}
 				}
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
@@ -1790,6 +1875,25 @@ func (d *Document) serializeStyles() error {
 	d.parts["word/styles.xml"] = append([]byte(xml.Header), data...)
 
 	Debugf("样式序列化完成")
+	return nil
+}
+
+// parseStyles 解析样式文件
+func (d *Document) parseStyles() error {
+	Debugf("开始解析样式文件")
+
+	// 查找样式文件
+	stylesData, ok := d.parts["word/styles.xml"]
+	if !ok {
+		return WrapError("parse_styles", fmt.Errorf("样式文件不存在"))
+	}
+
+	// 使用样式管理器解析样式
+	if err := d.styleManager.LoadStylesFromDocument(stylesData); err != nil {
+		return WrapError("parse_styles", err)
+	}
+
+	Debugf("样式解析完成")
 	return nil
 }
 

@@ -228,7 +228,7 @@ func (sm *StyleManager) initializePredefinedStyles() {
 	sm.addSpecialStyles()
 }
 
-// addNormalStyle 添加普通文本样式
+// addNormalStyle 添加Normal样式
 func (sm *StyleManager) addNormalStyle() {
 	normalStyle := &Style{
 		Type:    string(StyleTypeParagraph),
@@ -246,7 +246,7 @@ func (sm *StyleManager) addNormalStyle() {
 		},
 		RunPr: &RunProperties{
 			FontSize: &FontSize{
-				Val: "22", // 11磅字体（Word中以半磅为单位）
+				Val: "21", // 五号字体（10.5磅，Word中以半磅为单位）
 			},
 			FontFamily: &FontFamily{
 				ASCII:    "Calibri",
@@ -1334,4 +1334,81 @@ func convertRunPropertiesToMap(props *RunProperties) map[string]interface{} {
 	}
 
 	return result
+}
+
+// ParseStylesFromXML 从XML数据解析样式
+func (sm *StyleManager) ParseStylesFromXML(xmlData []byte) error {
+	type stylesXML struct {
+		XMLName xml.Name `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main styles"`
+		Styles  []Style  `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main style"`
+	}
+
+	var styles stylesXML
+	if err := xml.Unmarshal(xmlData, &styles); err != nil {
+		return fmt.Errorf("解析样式XML失败: %v", err)
+	}
+
+	// 清空现有样式（除非我们想要合并）
+	sm.styles = make(map[string]*Style)
+
+	// 添加解析的样式
+	for i := range styles.Styles {
+		sm.AddStyle(&styles.Styles[i])
+	}
+
+	return nil
+}
+
+// MergeStylesFromXML 从XML数据合并样式（保留现有样式，只添加新的）
+func (sm *StyleManager) MergeStylesFromXML(xmlData []byte) error {
+	type stylesXML struct {
+		XMLName xml.Name `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main styles"`
+		Styles  []Style  `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main style"`
+	}
+
+	var styles stylesXML
+	if err := xml.Unmarshal(xmlData, &styles); err != nil {
+		return fmt.Errorf("解析样式XML失败: %v", err)
+	}
+
+	// 只添加不存在的样式，保留现有样式
+	for i := range styles.Styles {
+		if !sm.StyleExists(styles.Styles[i].StyleID) {
+			sm.AddStyle(&styles.Styles[i])
+		}
+	}
+
+	return nil
+}
+
+// LoadStylesFromDocument 从现有文档加载样式，优先保留原有样式设置
+func (sm *StyleManager) LoadStylesFromDocument(xmlData []byte) error {
+	if len(xmlData) == 0 {
+		// 如果没有样式数据，使用默认样式
+		sm.initializePredefinedStyles()
+		return nil
+	}
+
+	// 先解析现有样式
+	if err := sm.ParseStylesFromXML(xmlData); err != nil {
+		// 如果解析失败，使用默认样式
+		sm.initializePredefinedStyles()
+		return fmt.Errorf("解析现有样式失败，使用默认样式: %v", err)
+	}
+
+	// 确保基本样式存在，如果不存在则添加
+	if !sm.StyleExists("Normal") {
+		sm.addNormalStyle()
+	}
+
+	// 确保基本标题样式存在
+	headingStyles := []string{"Heading1", "Heading2", "Heading3", "Heading4", "Heading5", "Heading6", "Heading7", "Heading8", "Heading9"}
+	for _, styleID := range headingStyles {
+		if !sm.StyleExists(styleID) {
+			sm.addHeadingStyles()
+			break
+		}
+	}
+
+	return nil
 }

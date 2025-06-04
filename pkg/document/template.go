@@ -707,9 +707,10 @@ func (te *TemplateEngine) cloneParagraphProperties(source *ParagraphProperties) 
 	// 复制间距
 	if source.Spacing != nil {
 		props.Spacing = &Spacing{
-			Before: source.Spacing.Before,
-			After:  source.Spacing.After,
-			Line:   source.Spacing.Line,
+			Before:   source.Spacing.Before,
+			After:    source.Spacing.After,
+			Line:     source.Spacing.Line,
+			LineRule: source.Spacing.LineRule,
 		}
 	}
 
@@ -785,9 +786,31 @@ func (te *TemplateEngine) cloneRunProperties(source *RunProperties) *RunProperti
 		props.Bold = &Bold{}
 	}
 
+	// 复制复杂脚本粗体
+	if source.BoldCs != nil {
+		props.BoldCs = &BoldCs{}
+	}
+
 	// 复制斜体
 	if source.Italic != nil {
 		props.Italic = &Italic{}
+	}
+
+	// 复制复杂脚本斜体
+	if source.ItalicCs != nil {
+		props.ItalicCs = &ItalicCs{}
+	}
+
+	// 复制下划线
+	if source.Underline != nil {
+		props.Underline = &Underline{
+			Val: source.Underline.Val,
+		}
+	}
+
+	// 复制删除线
+	if source.Strike != nil {
+		props.Strike = &Strike{}
 	}
 
 	// 复制字体大小
@@ -797,10 +820,24 @@ func (te *TemplateEngine) cloneRunProperties(source *RunProperties) *RunProperti
 		}
 	}
 
+	// 复制复杂脚本字体大小
+	if source.FontSizeCs != nil {
+		props.FontSizeCs = &FontSizeCs{
+			Val: source.FontSizeCs.Val,
+		}
+	}
+
 	// 复制颜色
 	if source.Color != nil {
 		props.Color = &Color{
 			Val: source.Color.Val,
+		}
+	}
+
+	// 复制背景色
+	if source.Highlight != nil {
+		props.Highlight = &Highlight{
+			Val: source.Highlight.Val,
 		}
 	}
 
@@ -1347,6 +1384,12 @@ func (te *TemplateEngine) RenderTemplateToDocument(templateName string, data *Te
 
 // replaceVariablesInDocument 在文档结构中直接替换变量
 func (te *TemplateEngine) replaceVariablesInDocument(doc *Document, data *TemplateData) error {
+	// 首先处理文档级别的循环（跨段落）
+	err := te.processDocumentLevelLoops(doc, data)
+	if err != nil {
+		return err
+	}
+
 	for _, element := range doc.Body.Elements {
 		switch elem := element.(type) {
 		case *Paragraph:
@@ -1365,6 +1408,117 @@ func (te *TemplateEngine) replaceVariablesInDocument(doc *Document, data *Templa
 		}
 	}
 
+	return nil
+}
+
+// processDocumentLevelLoops 处理文档级别的循环（跨段落）
+func (te *TemplateEngine) processDocumentLevelLoops(doc *Document, data *TemplateData) error {
+	elements := doc.Body.Elements
+	newElements := make([]interface{}, 0)
+
+	i := 0
+	for i < len(elements) {
+		element := elements[i]
+
+		// 检查当前元素是否包含循环开始标记
+		if para, ok := element.(*Paragraph); ok {
+			// 获取段落的完整文本
+			fullText := ""
+			for _, run := range para.Runs {
+				fullText += run.Text.Content
+			}
+
+			// 检查是否包含循环开始标记
+			eachPattern := regexp.MustCompile(`\{\{#each\s+(\w+)\}\}`)
+			matches := eachPattern.FindStringSubmatch(fullText)
+
+			if len(matches) > 1 {
+				listVarName := matches[1]
+
+				// 找到循环结束位置
+				loopEndIndex := -1
+				templateElements := make([]interface{}, 0)
+
+				// 收集循环模板元素（从当前位置到结束标记）
+				for j := i; j < len(elements); j++ {
+					templateElements = append(templateElements, elements[j])
+
+					if nextPara, ok := elements[j].(*Paragraph); ok {
+						nextText := ""
+						for _, run := range nextPara.Runs {
+							nextText += run.Text.Content
+						}
+
+						if strings.Contains(nextText, "{{/each}}") {
+							loopEndIndex = j
+							break
+						}
+					}
+				}
+
+				if loopEndIndex >= 0 {
+					// 处理循环
+					if listData, exists := data.Lists[listVarName]; exists {
+						// 为每个数据项生成元素
+						for _, item := range listData {
+							if itemMap, ok := item.(map[string]interface{}); ok {
+								// 复制模板元素并替换变量
+								for _, templateElement := range templateElements {
+									if templatePara, ok := templateElement.(*Paragraph); ok {
+										newPara := te.cloneParagraph(templatePara)
+
+										// 处理段落文本
+										fullText := ""
+										for _, run := range newPara.Runs {
+											fullText += run.Text.Content
+										}
+
+										// 移除循环标记
+										content := fullText
+										content = regexp.MustCompile(`\{\{#each\s+\w+\}\}`).ReplaceAllString(content, "")
+										content = regexp.MustCompile(`\{\{/each\}\}`).ReplaceAllString(content, "")
+
+										// 替换变量
+										for key, value := range itemMap {
+											placeholder := fmt.Sprintf("{{%s}}", key)
+											content = strings.ReplaceAll(content, placeholder, te.interfaceToString(value))
+										}
+
+										// 如果内容不为空，创建新段落
+										if strings.TrimSpace(content) != "" {
+											newPara.Runs = []Run{{
+												Text: Text{Content: content},
+												Properties: &RunProperties{
+													FontFamily: &FontFamily{
+														ASCII:    "仿宋",
+														HAnsi:    "仿宋",
+														EastAsia: "仿宋",
+													},
+													Bold: &Bold{},
+												},
+											}}
+											newElements = append(newElements, newPara)
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// 跳过循环模板元素
+					i = loopEndIndex + 1
+					continue
+				}
+			}
+		}
+
+		// 不是循环元素，直接添加
+		newElements = append(newElements, element)
+		i++
+	}
+
+	// 更新文档元素
+	doc.Body.Elements = newElements
 	return nil
 }
 
@@ -1401,15 +1555,84 @@ func (te *TemplateEngine) replaceVariablesInParagraph(para *Paragraph, data *Tem
 		return nil
 	}
 
+	// 先处理循环语句（包括非表格循环）
+	processedText, hasLoopChanges := te.processNonTableLoops(fullText, data)
+	if hasLoopChanges {
+		// 重新构建段落
+		para.Runs = []Run{{
+			Text: Text{Content: processedText},
+			Properties: &RunProperties{
+				FontFamily: &FontFamily{
+					ASCII:    "仿宋",
+					HAnsi:    "仿宋",
+					EastAsia: "仿宋",
+				},
+				Bold: &Bold{},
+			},
+		}}
+		fullText = processedText
+	}
+
 	// 使用新的逐个变量替换方法
-	newRuns, hasChanges := te.replaceVariablesSequentially(runInfos, fullText, data)
+	newRuns, hasVarChanges := te.replaceVariablesSequentially(runInfos, fullText, data)
 
 	// 如果有变化，更新段落的Run
-	if hasChanges {
+	if hasVarChanges || hasLoopChanges {
 		para.Runs = newRuns
 	}
 
 	return nil
+}
+
+// processNonTableLoops 处理非表格循环
+func (te *TemplateEngine) processNonTableLoops(content string, data *TemplateData) (string, bool) {
+	eachPattern := regexp.MustCompile(`(?s)\{\{#each\s+(\w+)\}\}(.*?)\{\{/each\}\}`)
+	matches := eachPattern.FindAllStringSubmatchIndex(content, -1)
+
+	if len(matches) == 0 {
+		return content, false
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+	hasChanges := false
+
+	for _, match := range matches {
+		// 找到变量名和块内容
+		fullMatch := content[match[0]:match[1]]
+		submatch := eachPattern.FindStringSubmatch(fullMatch)
+		if len(submatch) >= 3 {
+			listVar := submatch[1]
+			blockContent := submatch[2]
+
+			// 添加循环前的内容
+			result.WriteString(content[lastEnd:match[0]])
+
+			// 处理循环
+			if listData, exists := data.Lists[listVar]; exists {
+				for _, item := range listData {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						loopContent := blockContent
+						for key, value := range itemMap {
+							placeholder := fmt.Sprintf("{{%s}}", key)
+							loopContent = strings.ReplaceAll(loopContent, placeholder, te.interfaceToString(value))
+						}
+						result.WriteString(loopContent)
+					}
+				}
+			}
+
+			lastEnd = match[1]
+			hasChanges = true
+		}
+	}
+
+	// 添加剩余内容
+	if lastEnd < len(content) {
+		result.WriteString(content[lastEnd:])
+	}
+
+	return result.String(), hasChanges
 }
 
 // replaceVariablesSequentially 逐个替换变量，保持样式
@@ -1676,21 +1899,22 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 
 	for i, row := range table.Rows {
 		found := false
+		// 重构每个单元格的文本，解决跨Run的变量问题
 		for _, cell := range row.Cells {
 			for _, para := range cell.Paragraphs {
+				// 合并所有Run的文本
+				fullText := ""
 				for _, run := range para.Runs {
-					if run.Text.Content != "" {
-						eachPattern := regexp.MustCompile(`\{\{#each\s+(\w+)\}\}`)
-						matches := eachPattern.FindStringSubmatch(run.Text.Content)
-						if len(matches) > 1 {
-							templateRowIndex = i
-							listVarName = matches[1]
-							found = true
-							break
-						}
-					}
+					fullText += run.Text.Content
 				}
-				if found {
+
+				// 检查合并后的文本中是否包含循环语法
+				eachPattern := regexp.MustCompile(`\{\{#each\s+(\w+)\}\}`)
+				matches := eachPattern.FindStringSubmatch(fullText)
+				if len(matches) > 1 {
+					templateRowIndex = i
+					listVarName = matches[1]
+					found = true
 					break
 				}
 			}
@@ -1730,24 +1954,46 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 		if itemMap, ok := item.(map[string]interface{}); ok {
 			for i := range newRow.Cells {
 				for j := range newRow.Cells[i].Paragraphs {
-					for k := range newRow.Cells[i].Paragraphs[j].Runs {
-						if newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content != "" {
-							// 移除模板语法标记
-							content := newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content
-							content = regexp.MustCompile(`\{\{#each\s+\w+\}\}`).ReplaceAllString(content, "")
-							content = regexp.MustCompile(`\{\{/each\}\}`).ReplaceAllString(content, "")
+					// 合并所有Run的文本
+					fullText := ""
+					originalRuns := newRow.Cells[i].Paragraphs[j].Runs
+					for _, run := range originalRuns {
+						fullText += run.Text.Content
+					}
 
-							// 替换变量
-							for key, value := range itemMap {
-								placeholder := fmt.Sprintf("{{%s}}", key)
-								content = strings.ReplaceAll(content, placeholder, te.interfaceToString(value))
-							}
+					// 移除模板语法标记
+					content := fullText
+					content = regexp.MustCompile(`\{\{#each\s+\w+\}\}`).ReplaceAllString(content, "")
+					content = regexp.MustCompile(`\{\{/each\}\}`).ReplaceAllString(content, "")
 
-							// 处理条件语句
-							content = te.renderLoopConditionals(content, itemMap)
+					// 替换变量
+					for key, value := range itemMap {
+						placeholder := fmt.Sprintf("{{%s}}", key)
+						content = strings.ReplaceAll(content, placeholder, te.interfaceToString(value))
+					}
 
-							newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content = content
-						}
+					// 处理条件语句
+					content = te.renderLoopConditionals(content, itemMap)
+
+					// 重建Run结构，保持第一个Run的样式
+					if len(originalRuns) > 0 {
+						firstRun := originalRuns[0]
+						newRun := te.cloneRun(&firstRun)
+						newRun.Text.Content = content
+						newRow.Cells[i].Paragraphs[j].Runs = []Run{newRun}
+					} else {
+						// 如果没有原始Run，创建新的
+						newRow.Cells[i].Paragraphs[j].Runs = []Run{{
+							Text: Text{Content: content},
+							Properties: &RunProperties{
+								FontFamily: &FontFamily{
+									ASCII:    "仿宋",
+									HAnsi:    "仿宋",
+									EastAsia: "仿宋",
+								},
+								Bold: &Bold{},
+							},
+						}}
 					}
 				}
 			}
