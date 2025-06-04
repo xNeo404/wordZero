@@ -820,9 +820,9 @@ func (t *Table) SetCellFormat(row, col int, format *CellFormat) error {
 		}
 
 		// 设置字体名称
-		if format.TextFormat.FontName != "" {
+		if format.TextFormat.FontFamily != "" {
 			run.Properties.FontFamily = &FontFamily{
-				ASCII: format.TextFormat.FontName,
+				ASCII: format.TextFormat.FontFamily,
 			}
 		}
 	}
@@ -866,9 +866,9 @@ func (t *Table) SetCellFormattedText(row, col int, text string, format *TextForm
 			}
 		}
 
-		if format.FontName != "" {
+		if format.FontFamily != "" {
 			run.Properties.FontFamily = &FontFamily{
-				ASCII: format.FontName,
+				ASCII: format.FontFamily,
 			}
 		}
 	}
@@ -924,9 +924,9 @@ func (t *Table) AddCellFormattedText(row, col int, text string, format *TextForm
 			}
 		}
 
-		if format.FontName != "" {
+		if format.FontFamily != "" {
 			run.Properties.FontFamily = &FontFamily{
-				ASCII: format.FontName,
+				ASCII: format.FontFamily,
 			}
 		}
 	}
@@ -1337,7 +1337,7 @@ func (t *Table) GetCellFormat(row, col int) (*CellFormat, error) {
 			}
 
 			if run.Properties.FontFamily != nil {
-				format.TextFormat.FontName = run.Properties.FontFamily.ASCII
+				format.TextFormat.FontFamily = run.Properties.FontFamily.ASCII
 			}
 		}
 	}

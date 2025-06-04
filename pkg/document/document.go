@@ -211,15 +211,16 @@ type FontFamily struct {
 	HAnsi    string   `xml:"w:hAnsi,attr,omitempty"`
 	EastAsia string   `xml:"w:eastAsia,attr,omitempty"`
 	CS       string   `xml:"w:cs,attr,omitempty"`
+	Hint     string   `xml:"w:hint,attr,omitempty"`
 }
 
 // TextFormat 文本格式配置
 type TextFormat struct {
-	Bold      bool   // 是否粗体
-	Italic    bool   // 是否斜体
-	FontSize  int    // 字体大小（磅）
-	FontColor string // 字体颜色（十六进制，如 "FF0000" 表示红色）
-	FontName  string // 字体名称
+	Bold       bool   // 是否粗体
+	Italic     bool   // 是否斜体
+	FontSize   int    // 字体大小（磅）
+	FontColor  string // 字体颜色（十六进制，如 "FF0000" 表示红色）
+	FontFamily string // 字体名称
 }
 
 // AlignmentType 对齐类型
@@ -553,8 +554,8 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 			runProps.Color = &Color{Val: color}
 		}
 
-		if format.FontName != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontName}
+		if format.FontFamily != "" {
+			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
 		}
 	}
 
@@ -713,8 +714,8 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 			runProps.Color = &Color{Val: color}
 		}
 
-		if format.FontName != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontName}
+		if format.FontFamily != "" {
+			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
 		}
 	}
 
@@ -1317,8 +1318,17 @@ func (d *Document) parseRunProperties(decoder *xml.Decoder, run *Run) error {
 				}
 			case "rFonts":
 				ascii := getAttributeValue(t.Attr, "ascii")
-				if ascii != "" {
-					run.Properties.FontFamily = &FontFamily{ASCII: ascii}
+				hAnsi := getAttributeValue(t.Attr, "hAnsi")
+				eastAsia := getAttributeValue(t.Attr, "eastAsia")
+				cs := getAttributeValue(t.Attr, "cs")
+				hint := getAttributeValue(t.Attr, "hint")
+
+				run.Properties.FontFamily = &FontFamily{
+					ASCII:    ascii,
+					HAnsi:    hAnsi,
+					EastAsia: eastAsia,
+					CS:       cs,
+					Hint:     hint,
 				}
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err

@@ -126,11 +126,11 @@ func TestAddFormattedParagraph(t *testing.T) {
 	text := "格式化文本"
 
 	format := &TextFormat{
-		Bold:      true,
-		Italic:    true,
-		FontSize:  14,
-		FontColor: "FF0000",
-		FontName:  "宋体",
+		Bold:       true,
+		Italic:     true,
+		FontSize:   14,
+		FontColor:  "FF0000",
+		FontFamily: "宋体",
 	}
 
 	para := doc.AddFormattedParagraph(text, format)

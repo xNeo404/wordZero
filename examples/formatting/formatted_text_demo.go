@@ -11,10 +11,10 @@ func main() {
 
 	// 创建不同格式的文本
 	formats := []*document.TextFormat{
-		{FontName: "Arial", FontSize: 12, Bold: true},
-		{FontName: "Times New Roman", FontSize: 14, Italic: true},
-		{FontName: "Courier New", FontSize: 10, FontColor: "FF0000"},
-		{FontName: "Calibri", FontSize: 16, Bold: true, Italic: true},
+		{FontFamily: "Arial", FontSize: 12, Bold: true},
+		{FontFamily: "Times New Roman", FontSize: 14, Italic: true},
+		{FontFamily: "Courier New", FontSize: 10, FontColor: "FF0000"},
+		{FontFamily: "Calibri", FontSize: 16, Bold: true, Italic: true},
 	}
 
 	texts := []string{

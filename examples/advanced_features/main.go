@@ -16,10 +16,10 @@ func main() {
 
 	// 1. 设置文档标题和副标题
 	title := doc.AddFormattedParagraph("高级功能演示文档", &document.TextFormat{
-		Bold:      true,
-		FontSize:  18,
-		FontColor: "2F5496",
-		FontName:  "微软雅黑",
+		Bold:       true,
+		FontSize:   18,
+		FontColor:  "2F5496",
+		FontFamily: "微软雅黑",
 	})
 	title.SetAlignment(document.AlignCenter)
 	title.SetSpacing(&document.SpacingConfig{
@@ -27,10 +27,10 @@ func main() {
 	})
 
 	subtitle := doc.AddFormattedParagraph("包含目录、表格、页眉页脚和各种格式", &document.TextFormat{
-		Italic:    true,
-		FontSize:  12,
-		FontColor: "7030A0",
-		FontName:  "微软雅黑",
+		Italic:     true,
+		FontSize:   12,
+		FontColor:  "7030A0",
+		FontFamily: "微软雅黑",
 	})
 	subtitle.SetAlignment(document.AlignCenter)
 	subtitle.SetSpacing(&document.SpacingConfig{

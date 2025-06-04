@@ -17,11 +17,11 @@ func TestTextFormatting(t *testing.T) {
 
 	// 测试基本格式化
 	format := &document.TextFormat{
-		Bold:      true,
-		Italic:    true,
-		FontSize:  14,
-		FontColor: "FF0000",
-		FontName:  "Arial",
+		Bold:       true,
+		Italic:     true,
+		FontSize:   14,
+		FontColor:  "FF0000",
+		FontFamily: "Arial",
 	}
 
 	p := doc.AddFormattedParagraph("测试格式化文本", format)

@@ -681,11 +681,11 @@ func TestCellFormattedText(t *testing.T) {
 
 	// 测试设置富文本内容
 	format := &TextFormat{
-		Bold:      true,
-		Italic:    true,
-		FontSize:  14,
-		FontColor: "FF0000",
-		FontName:  "Arial",
+		Bold:       true,
+		Italic:     true,
+		FontSize:   14,
+		FontColor:  "FF0000",
+		FontFamily: "Arial",
 	}
 
 	err := table.SetCellFormattedText(0, 0, "富文本测试", format)

@@ -81,7 +81,7 @@ doc.Save("example.docx")`
 	mixedPara.AddFormattedText("、", nil)
 	mixedPara.AddFormattedText("彩色文本", &document.TextFormat{FontColor: "FF0000"})
 	mixedPara.AddFormattedText("以及", nil)
-	mixedPara.AddFormattedText("不同字体", &document.TextFormat{FontName: "Times New Roman", FontSize: 14})
+	mixedPara.AddFormattedText("不同字体", &document.TextFormat{FontFamily: "Times New Roman", FontSize: 14})
 	mixedPara.AddFormattedText("。", nil)
 
 	// 8. 创建列表

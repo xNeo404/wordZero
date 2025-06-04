@@ -58,8 +58,8 @@ data.SetList("items", items)
 // 设置条件
 data.SetCondition("showDiscount", true)
 
-// 渲染生成新文档
-newDoc, err := engine.RenderToDocument("template_name", data)
+// 渲染生成新文档（推荐方法）
+newDoc, err := engine.RenderTemplateToDocument("template_name", data)
 if err != nil {
     log.Fatal(err)
 }
@@ -177,7 +177,7 @@ for i, customer := range customers {
         continue
     }
     
-    doc, err := engine.RenderToDocument("customer_template", data)
+    doc, err := engine.RenderTemplateToDocument("customer_template", data)
     if err != nil {
         continue
     }

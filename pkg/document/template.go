@@ -610,7 +610,7 @@ func (te *TemplateEngine) documentToTemplateString(doc *Document) (string, error
 	return "", nil // 将在新的方法中处理
 }
 
-// cloneDocument 克隆文档
+// cloneDocument 深度复制文档所有元素和属性
 func (te *TemplateEngine) cloneDocument(source *Document) *Document {
 	// 创建新文档
 	doc := New()
@@ -620,64 +620,699 @@ func (te *TemplateEngine) cloneDocument(source *Document) *Document {
 		doc.styleManager = source.styleManager
 	}
 
+	// 复制所有文档部件，保持完整的文档结构
+	if source.parts != nil {
+		doc.parts = make(map[string][]byte)
+		for name, data := range source.parts {
+			// 深度复制每个部件的数据
+			copiedData := make([]byte, len(data))
+			copy(copiedData, data)
+			doc.parts[name] = copiedData
+		}
+	}
+
+	// 复制文档关系
+	if source.relationships != nil {
+		doc.relationships = source.relationships
+	}
+
+	// 复制文档级关系
+	if source.documentRelationships != nil {
+		doc.documentRelationships = source.documentRelationships
+	}
+
+	// 复制内容类型
+	if source.contentTypes != nil {
+		doc.contentTypes = source.contentTypes
+	}
+
 	// 深度复制文档体元素
 	for _, element := range source.Body.Elements {
 		switch elem := element.(type) {
 		case *Paragraph:
-			// 复制段落
-			newPara := &Paragraph{
-				Properties: elem.Properties,
-				Runs:       make([]Run, len(elem.Runs)),
-			}
-			for i, run := range elem.Runs {
-				newRun := Run{
-					Properties: run.Properties,
-					Text:       Text{Content: run.Text.Content},
-				}
-				newPara.Runs[i] = newRun
-			}
+			// 深度复制段落
+			newPara := te.cloneParagraph(elem)
 			doc.Body.Elements = append(doc.Body.Elements, newPara)
 
 		case *Table:
-			// 复制表格
-			newTable := &Table{
-				Properties: elem.Properties,
-				Grid:       elem.Grid,
-				Rows:       make([]TableRow, len(elem.Rows)),
-			}
-			for i, row := range elem.Rows {
-				newRow := TableRow{
-					Properties: row.Properties,
-					Cells:      make([]TableCell, len(row.Cells)),
-				}
-				for j, cell := range row.Cells {
-					newCell := TableCell{
-						Properties: cell.Properties,
-						Paragraphs: make([]Paragraph, len(cell.Paragraphs)),
-					}
-					for k, para := range cell.Paragraphs {
-						newPara := Paragraph{
-							Properties: para.Properties,
-							Runs:       make([]Run, len(para.Runs)),
-						}
-						for l, run := range para.Runs {
-							newRun := Run{
-								Properties: run.Properties,
-								Text:       Text{Content: run.Text.Content},
-							}
-							newPara.Runs[l] = newRun
-						}
-						newCell.Paragraphs[k] = newPara
-					}
-					newRow.Cells[j] = newCell
-				}
-				newTable.Rows[i] = newRow
-			}
+			// 深度复制表格
+			newTable := te.cloneTable(elem)
 			doc.Body.Elements = append(doc.Body.Elements, newTable)
 		}
 	}
 
 	return doc
+}
+
+// cloneParagraph 深度复制段落
+func (te *TemplateEngine) cloneParagraph(source *Paragraph) *Paragraph {
+	newPara := &Paragraph{
+		Properties: te.cloneParagraphProperties(source.Properties),
+		Runs:       make([]Run, len(source.Runs)),
+	}
+
+	for i, run := range source.Runs {
+		newPara.Runs[i] = te.cloneRun(&run)
+	}
+
+	return newPara
+}
+
+// cloneParagraphProperties 深度复制段落属性
+func (te *TemplateEngine) cloneParagraphProperties(source *ParagraphProperties) *ParagraphProperties {
+	if source == nil {
+		return nil
+	}
+
+	props := &ParagraphProperties{}
+
+	// 复制段落样式
+	if source.ParagraphStyle != nil {
+		props.ParagraphStyle = &ParagraphStyle{
+			Val: source.ParagraphStyle.Val,
+		}
+	}
+
+	// 复制编号属性
+	if source.NumberingProperties != nil {
+		props.NumberingProperties = &NumberingProperties{}
+		if source.NumberingProperties.ILevel != nil {
+			props.NumberingProperties.ILevel = &ILevel{Val: source.NumberingProperties.ILevel.Val}
+		}
+		if source.NumberingProperties.NumID != nil {
+			props.NumberingProperties.NumID = &NumID{Val: source.NumberingProperties.NumID.Val}
+		}
+	}
+
+	// 复制间距
+	if source.Spacing != nil {
+		props.Spacing = &Spacing{
+			Before: source.Spacing.Before,
+			After:  source.Spacing.After,
+			Line:   source.Spacing.Line,
+		}
+	}
+
+	// 复制对齐方式
+	if source.Justification != nil {
+		props.Justification = &Justification{
+			Val: source.Justification.Val,
+		}
+	}
+
+	// 复制缩进
+	if source.Indentation != nil {
+		props.Indentation = &Indentation{
+			FirstLine: source.Indentation.FirstLine,
+			Left:      source.Indentation.Left,
+			Right:     source.Indentation.Right,
+		}
+	}
+
+	// 复制制表符
+	if source.Tabs != nil {
+		props.Tabs = &Tabs{
+			Tabs: make([]TabDef, len(source.Tabs.Tabs)),
+		}
+		for i, tab := range source.Tabs.Tabs {
+			props.Tabs.Tabs[i] = TabDef{
+				Val:    tab.Val,
+				Leader: tab.Leader,
+				Pos:    tab.Pos,
+			}
+		}
+	}
+
+	return props
+}
+
+// cloneRun 深度复制文本运行
+func (te *TemplateEngine) cloneRun(source *Run) Run {
+	newRun := Run{
+		Properties: te.cloneRunProperties(source.Properties),
+		Text:       Text{Content: source.Text.Content, Space: source.Text.Space},
+	}
+
+	// 复制图像（如果有）
+	if source.Drawing != nil {
+		// 暂时保持简单复制，图像的深度复制比较复杂
+		newRun.Drawing = source.Drawing
+	}
+
+	// 复制域字符（如果有）
+	if source.FieldChar != nil {
+		newRun.FieldChar = source.FieldChar
+	}
+
+	// 复制指令文本（如果有）
+	if source.InstrText != nil {
+		newRun.InstrText = source.InstrText
+	}
+
+	return newRun
+}
+
+// cloneRunProperties 深度复制文本运行属性
+func (te *TemplateEngine) cloneRunProperties(source *RunProperties) *RunProperties {
+	if source == nil {
+		return nil
+	}
+
+	props := &RunProperties{}
+
+	// 复制粗体
+	if source.Bold != nil {
+		props.Bold = &Bold{}
+	}
+
+	// 复制斜体
+	if source.Italic != nil {
+		props.Italic = &Italic{}
+	}
+
+	// 复制字体大小
+	if source.FontSize != nil {
+		props.FontSize = &FontSize{
+			Val: source.FontSize.Val,
+		}
+	}
+
+	// 复制颜色
+	if source.Color != nil {
+		props.Color = &Color{
+			Val: source.Color.Val,
+		}
+	}
+
+	// 完整复制字体族属性，包括所有字体设置
+	if source.FontFamily != nil {
+		props.FontFamily = &FontFamily{
+			ASCII:    source.FontFamily.ASCII,
+			HAnsi:    source.FontFamily.HAnsi,
+			EastAsia: source.FontFamily.EastAsia,
+			CS:       source.FontFamily.CS,
+			Hint:     source.FontFamily.Hint,
+		}
+	}
+
+	return props
+}
+
+// cloneTable 深度复制表格
+func (te *TemplateEngine) cloneTable(source *Table) *Table {
+	newTable := &Table{
+		Properties: te.cloneTableProperties(source.Properties),
+		Grid:       te.cloneTableGrid(source.Grid),
+		Rows:       make([]TableRow, len(source.Rows)),
+	}
+
+	for i, row := range source.Rows {
+		newTable.Rows[i] = *te.cloneTableRow(&row)
+	}
+
+	return newTable
+}
+
+// cloneTableProperties 深度复制表格属性
+func (te *TemplateEngine) cloneTableProperties(source *TableProperties) *TableProperties {
+	if source == nil {
+		return nil
+	}
+
+	props := &TableProperties{}
+
+	// 复制表格宽度
+	if source.TableW != nil {
+		props.TableW = &TableWidth{
+			W:    source.TableW.W,
+			Type: source.TableW.Type,
+		}
+	}
+
+	// 复制表格对齐
+	if source.TableJc != nil {
+		props.TableJc = &TableJc{
+			Val: source.TableJc.Val,
+		}
+	}
+
+	// 复制表格外观
+	if source.TableLook != nil {
+		props.TableLook = &TableLook{
+			Val:      source.TableLook.Val,
+			FirstRow: source.TableLook.FirstRow,
+			LastRow:  source.TableLook.LastRow,
+			FirstCol: source.TableLook.FirstCol,
+			LastCol:  source.TableLook.LastCol,
+			NoHBand:  source.TableLook.NoHBand,
+			NoVBand:  source.TableLook.NoVBand,
+		}
+	}
+
+	// 复制表格样式
+	if source.TableStyle != nil {
+		props.TableStyle = &TableStyle{
+			Val: source.TableStyle.Val,
+		}
+	}
+
+	// 复制表格边框
+	if source.TableBorders != nil {
+		props.TableBorders = te.cloneTableBorders(source.TableBorders)
+	}
+
+	// 复制表格底纹
+	if source.Shd != nil {
+		props.Shd = &TableShading{
+			Val:       source.Shd.Val,
+			Color:     source.Shd.Color,
+			Fill:      source.Shd.Fill,
+			ThemeFill: source.Shd.ThemeFill,
+		}
+	}
+
+	// 复制表格单元格边距
+	if source.TableCellMar != nil {
+		props.TableCellMar = te.cloneTableCellMargins(source.TableCellMar)
+	}
+
+	// 复制表格布局
+	if source.TableLayout != nil {
+		props.TableLayout = &TableLayoutType{
+			Type: source.TableLayout.Type,
+		}
+	}
+
+	// 复制表格缩进
+	if source.TableInd != nil {
+		props.TableInd = &TableIndentation{
+			W:    source.TableInd.W,
+			Type: source.TableInd.Type,
+		}
+	}
+
+	return props
+}
+
+// cloneTableBorders 深度复制表格边框
+func (te *TemplateEngine) cloneTableBorders(source *TableBorders) *TableBorders {
+	if source == nil {
+		return nil
+	}
+
+	borders := &TableBorders{}
+
+	if source.Top != nil {
+		borders.Top = &TableBorder{
+			Val:        source.Top.Val,
+			Sz:         source.Top.Sz,
+			Space:      source.Top.Space,
+			Color:      source.Top.Color,
+			ThemeColor: source.Top.ThemeColor,
+		}
+	}
+
+	if source.Left != nil {
+		borders.Left = &TableBorder{
+			Val:        source.Left.Val,
+			Sz:         source.Left.Sz,
+			Space:      source.Left.Space,
+			Color:      source.Left.Color,
+			ThemeColor: source.Left.ThemeColor,
+		}
+	}
+
+	if source.Bottom != nil {
+		borders.Bottom = &TableBorder{
+			Val:        source.Bottom.Val,
+			Sz:         source.Bottom.Sz,
+			Space:      source.Bottom.Space,
+			Color:      source.Bottom.Color,
+			ThemeColor: source.Bottom.ThemeColor,
+		}
+	}
+
+	if source.Right != nil {
+		borders.Right = &TableBorder{
+			Val:        source.Right.Val,
+			Sz:         source.Right.Sz,
+			Space:      source.Right.Space,
+			Color:      source.Right.Color,
+			ThemeColor: source.Right.ThemeColor,
+		}
+	}
+
+	if source.InsideH != nil {
+		borders.InsideH = &TableBorder{
+			Val:        source.InsideH.Val,
+			Sz:         source.InsideH.Sz,
+			Space:      source.InsideH.Space,
+			Color:      source.InsideH.Color,
+			ThemeColor: source.InsideH.ThemeColor,
+		}
+	}
+
+	if source.InsideV != nil {
+		borders.InsideV = &TableBorder{
+			Val:        source.InsideV.Val,
+			Sz:         source.InsideV.Sz,
+			Space:      source.InsideV.Space,
+			Color:      source.InsideV.Color,
+			ThemeColor: source.InsideV.ThemeColor,
+		}
+	}
+
+	return borders
+}
+
+// cloneTableCellMargins 深度复制表格单元格边距
+func (te *TemplateEngine) cloneTableCellMargins(source *TableCellMargins) *TableCellMargins {
+	if source == nil {
+		return nil
+	}
+
+	margins := &TableCellMargins{}
+
+	if source.Top != nil {
+		margins.Top = &TableCellSpace{
+			W:    source.Top.W,
+			Type: source.Top.Type,
+		}
+	}
+
+	if source.Left != nil {
+		margins.Left = &TableCellSpace{
+			W:    source.Left.W,
+			Type: source.Left.Type,
+		}
+	}
+
+	if source.Bottom != nil {
+		margins.Bottom = &TableCellSpace{
+			W:    source.Bottom.W,
+			Type: source.Bottom.Type,
+		}
+	}
+
+	if source.Right != nil {
+		margins.Right = &TableCellSpace{
+			W:    source.Right.W,
+			Type: source.Right.Type,
+		}
+	}
+
+	return margins
+}
+
+// cloneTableGrid 深度复制表格网格
+func (te *TemplateEngine) cloneTableGrid(source *TableGrid) *TableGrid {
+	if source == nil {
+		return nil
+	}
+
+	grid := &TableGrid{
+		Cols: make([]TableGridCol, len(source.Cols)),
+	}
+
+	for i, col := range source.Cols {
+		grid.Cols[i] = TableGridCol{
+			W: col.W,
+		}
+	}
+
+	return grid
+}
+
+// cloneTableCellMarginsCell 深度复制表格单元格边距（单元格级别）
+func (te *TemplateEngine) cloneTableCellMarginsCell(source *TableCellMarginsCell) *TableCellMarginsCell {
+	if source == nil {
+		return nil
+	}
+
+	margins := &TableCellMarginsCell{}
+
+	if source.Top != nil {
+		margins.Top = &TableCellSpaceCell{
+			W:    source.Top.W,
+			Type: source.Top.Type,
+		}
+	}
+
+	if source.Left != nil {
+		margins.Left = &TableCellSpaceCell{
+			W:    source.Left.W,
+			Type: source.Left.Type,
+		}
+	}
+
+	if source.Bottom != nil {
+		margins.Bottom = &TableCellSpaceCell{
+			W:    source.Bottom.W,
+			Type: source.Bottom.Type,
+		}
+	}
+
+	if source.Right != nil {
+		margins.Right = &TableCellSpaceCell{
+			W:    source.Right.W,
+			Type: source.Right.Type,
+		}
+	}
+
+	return margins
+}
+
+// cloneTableCellBorders 深度复制表格单元格边框
+func (te *TemplateEngine) cloneTableCellBorders(source *TableCellBorders) *TableCellBorders {
+	if source == nil {
+		return nil
+	}
+
+	borders := &TableCellBorders{}
+
+	if source.Top != nil {
+		borders.Top = &TableCellBorder{
+			Val:        source.Top.Val,
+			Sz:         source.Top.Sz,
+			Space:      source.Top.Space,
+			Color:      source.Top.Color,
+			ThemeColor: source.Top.ThemeColor,
+		}
+	}
+
+	if source.Left != nil {
+		borders.Left = &TableCellBorder{
+			Val:        source.Left.Val,
+			Sz:         source.Left.Sz,
+			Space:      source.Left.Space,
+			Color:      source.Left.Color,
+			ThemeColor: source.Left.ThemeColor,
+		}
+	}
+
+	if source.Bottom != nil {
+		borders.Bottom = &TableCellBorder{
+			Val:        source.Bottom.Val,
+			Sz:         source.Bottom.Sz,
+			Space:      source.Bottom.Space,
+			Color:      source.Bottom.Color,
+			ThemeColor: source.Bottom.ThemeColor,
+		}
+	}
+
+	if source.Right != nil {
+		borders.Right = &TableCellBorder{
+			Val:        source.Right.Val,
+			Sz:         source.Right.Sz,
+			Space:      source.Right.Space,
+			Color:      source.Right.Color,
+			ThemeColor: source.Right.ThemeColor,
+		}
+	}
+
+	if source.InsideH != nil {
+		borders.InsideH = &TableCellBorder{
+			Val:        source.InsideH.Val,
+			Sz:         source.InsideH.Sz,
+			Space:      source.InsideH.Space,
+			Color:      source.InsideH.Color,
+			ThemeColor: source.InsideH.ThemeColor,
+		}
+	}
+
+	if source.InsideV != nil {
+		borders.InsideV = &TableCellBorder{
+			Val:        source.InsideV.Val,
+			Sz:         source.InsideV.Sz,
+			Space:      source.InsideV.Space,
+			Color:      source.InsideV.Color,
+			ThemeColor: source.InsideV.ThemeColor,
+		}
+	}
+
+	if source.TL2BR != nil {
+		borders.TL2BR = &TableCellBorder{
+			Val:        source.TL2BR.Val,
+			Sz:         source.TL2BR.Sz,
+			Space:      source.TL2BR.Space,
+			Color:      source.TL2BR.Color,
+			ThemeColor: source.TL2BR.ThemeColor,
+		}
+	}
+
+	if source.TR2BL != nil {
+		borders.TR2BL = &TableCellBorder{
+			Val:        source.TR2BL.Val,
+			Sz:         source.TR2BL.Sz,
+			Space:      source.TR2BL.Space,
+			Color:      source.TR2BL.Color,
+			ThemeColor: source.TR2BL.ThemeColor,
+		}
+	}
+
+	return borders
+}
+
+// cloneTableRow 深度复制表格行
+func (te *TemplateEngine) cloneTableRow(source *TableRow) *TableRow {
+	newRow := &TableRow{
+		Properties: te.cloneTableRowProperties(source.Properties),
+		Cells:      make([]TableCell, len(source.Cells)),
+	}
+
+	for i, cell := range source.Cells {
+		newRow.Cells[i] = te.cloneTableCell(&cell)
+	}
+
+	return newRow
+}
+
+// cloneTableRowProperties 深度复制表格行属性
+func (te *TemplateEngine) cloneTableRowProperties(source *TableRowProperties) *TableRowProperties {
+	if source == nil {
+		return nil
+	}
+
+	props := &TableRowProperties{}
+
+	// 复制行高
+	if source.TableRowH != nil {
+		props.TableRowH = &TableRowH{
+			Val:   source.TableRowH.Val,
+			HRule: source.TableRowH.HRule,
+		}
+	}
+
+	// 复制禁止跨页分割
+	if source.CantSplit != nil {
+		props.CantSplit = &CantSplit{
+			Val: source.CantSplit.Val,
+		}
+	}
+
+	// 复制标题行重复
+	if source.TblHeader != nil {
+		props.TblHeader = &TblHeader{
+			Val: source.TblHeader.Val,
+		}
+	}
+
+	return props
+}
+
+// cloneTableCell 深度复制表格单元格
+func (te *TemplateEngine) cloneTableCell(source *TableCell) TableCell {
+	newCell := TableCell{
+		Properties: te.cloneTableCellProperties(source.Properties),
+		Paragraphs: make([]Paragraph, len(source.Paragraphs)),
+	}
+
+	for i, para := range source.Paragraphs {
+		newCell.Paragraphs[i] = *te.cloneParagraph(&para)
+	}
+
+	return newCell
+}
+
+// cloneTableCellProperties 深度复制表格单元格属性
+func (te *TemplateEngine) cloneTableCellProperties(source *TableCellProperties) *TableCellProperties {
+	if source == nil {
+		return nil
+	}
+
+	props := &TableCellProperties{}
+
+	// 复制单元格宽度
+	if source.TableCellW != nil {
+		props.TableCellW = &TableCellW{
+			W:    source.TableCellW.W,
+			Type: source.TableCellW.Type,
+		}
+	}
+
+	// 复制单元格边距
+	if source.TcMar != nil {
+		props.TcMar = te.cloneTableCellMarginsCell(source.TcMar)
+	}
+
+	// 复制单元格边框
+	if source.TcBorders != nil {
+		props.TcBorders = te.cloneTableCellBorders(source.TcBorders)
+	}
+
+	// 复制单元格底纹
+	if source.Shd != nil {
+		props.Shd = &TableCellShading{
+			Val:       source.Shd.Val,
+			Color:     source.Shd.Color,
+			Fill:      source.Shd.Fill,
+			ThemeFill: source.Shd.ThemeFill,
+		}
+	}
+
+	// 复制单元格垂直对齐
+	if source.VAlign != nil {
+		props.VAlign = &VAlign{
+			Val: source.VAlign.Val,
+		}
+	}
+
+	// 复制网格跨度
+	if source.GridSpan != nil {
+		props.GridSpan = &GridSpan{
+			Val: source.GridSpan.Val,
+		}
+	}
+
+	// 复制垂直合并
+	if source.VMerge != nil {
+		props.VMerge = &VMerge{
+			Val: source.VMerge.Val,
+		}
+	}
+
+	// 复制文字方向
+	if source.TextDirection != nil {
+		props.TextDirection = &TextDirection{
+			Val: source.TextDirection.Val,
+		}
+	}
+
+	// 复制禁止换行
+	if source.NoWrap != nil {
+		props.NoWrap = &NoWrap{
+			Val: source.NoWrap.Val,
+		}
+	}
+
+	// 复制隐藏标记
+	if source.HideMark != nil {
+		props.HideMark = &HideMark{
+			Val: source.HideMark.Val,
+		}
+	}
+
+	return props
 }
 
 // applyRenderedContentToDocument 将渲染内容应用到文档
@@ -733,19 +1368,250 @@ func (te *TemplateEngine) replaceVariablesInDocument(doc *Document, data *Templa
 	return nil
 }
 
-// replaceVariablesInParagraph 在段落中替换变量
+// replaceVariablesInParagraph 在段落中替换变量（改进版本，更好地保持样式）
 func (te *TemplateEngine) replaceVariablesInParagraph(para *Paragraph, data *TemplateData) error {
-	for i := range para.Runs {
-		if para.Runs[i].Text.Content != "" {
-			// 替换普通变量
-			para.Runs[i].Text.Content = te.renderVariables(para.Runs[i].Text.Content, data.Variables)
+	// 首先识别所有变量占位符的位置
+	fullText := ""
+	runInfos := make([]struct {
+		startIndex int
+		endIndex   int
+		run        *Run
+	}, 0)
 
-			// 处理条件语句
-			para.Runs[i].Text.Content = te.renderConditionals(para.Runs[i].Text.Content, data.Conditions)
+	currentIndex := 0
+	for i := range para.Runs {
+		runText := para.Runs[i].Text.Content
+		if runText != "" {
+			runInfos = append(runInfos, struct {
+				startIndex int
+				endIndex   int
+				run        *Run
+			}{
+				startIndex: currentIndex,
+				endIndex:   currentIndex + len(runText),
+				run:        &para.Runs[i],
+			})
+			fullText += runText
+			currentIndex += len(runText)
 		}
 	}
 
+	// 如果没有文本内容，直接返回
+	if fullText == "" {
+		return nil
+	}
+
+	// 使用新的逐个变量替换方法
+	newRuns, hasChanges := te.replaceVariablesSequentially(runInfos, fullText, data)
+
+	// 如果有变化，更新段落的Run
+	if hasChanges {
+		para.Runs = newRuns
+	}
+
 	return nil
+}
+
+// replaceVariablesSequentially 逐个替换变量，保持样式
+func (te *TemplateEngine) replaceVariablesSequentially(originalRunInfos []struct {
+	startIndex int
+	endIndex   int
+	run        *Run
+}, originalText string, data *TemplateData) ([]Run, bool) {
+
+	// 找到所有变量位置
+	varPattern := regexp.MustCompile(`\{\{(\w+)\}\}`)
+	varMatches := varPattern.FindAllStringSubmatchIndex(originalText, -1)
+
+	if len(varMatches) == 0 {
+		// 没有变量，检查条件语句
+		return te.processConditionals(originalRunInfos, originalText, data)
+	}
+
+	newRuns := make([]Run, 0)
+	currentPos := 0
+	hasChanges := false
+
+	for _, varMatch := range varMatches {
+		varStart := varMatch[0]
+		varEnd := varMatch[1]
+		varNameStart := varMatch[2]
+		varNameEnd := varMatch[3]
+
+		// 添加变量前的文本（保持原样式）
+		if varStart > currentPos {
+			beforeText := originalText[currentPos:varStart]
+			beforeRuns := te.extractRunsForSegment(originalRunInfos, currentPos, varStart, beforeText)
+			newRuns = append(newRuns, beforeRuns...)
+		}
+
+		// 处理变量替换
+		varName := originalText[varNameStart:varNameEnd]
+		if value, exists := data.Variables[varName]; exists {
+			replacementText := te.interfaceToString(value)
+
+			// 为变量选择合适的样式（使用覆盖变量位置的Run样式）
+			varRun := te.findRunForPosition(originalRunInfos, varStart)
+			if varRun != nil {
+				newRun := te.cloneRun(varRun)
+				newRun.Text.Content = replacementText
+				newRuns = append(newRuns, newRun)
+				hasChanges = true
+			}
+		} else {
+			// 变量不存在，保持原始占位符
+			varText := originalText[varStart:varEnd]
+			varRun := te.findRunForPosition(originalRunInfos, varStart)
+			if varRun != nil {
+				newRun := te.cloneRun(varRun)
+				newRun.Text.Content = varText
+				newRuns = append(newRuns, newRun)
+			}
+		}
+
+		currentPos = varEnd
+	}
+
+	// 添加最后剩余的文本
+	if currentPos < len(originalText) {
+		afterText := originalText[currentPos:]
+		afterRuns := te.extractRunsForSegment(originalRunInfos, currentPos, len(originalText), afterText)
+		newRuns = append(newRuns, afterRuns...)
+	}
+
+	// 如果没有找到任何变量但文本发生了变化，处理条件语句
+	if !hasChanges {
+		return te.processConditionals(originalRunInfos, originalText, data)
+	}
+
+	// 对结果处理条件语句（但要保持每个Run的独立性）
+	if hasChanges {
+		finalRuns := te.processConditionalsPreservingRuns(newRuns, data)
+		return finalRuns, true
+	}
+
+	return newRuns, hasChanges
+}
+
+// processConditionalsPreservingRuns 处理条件语句但保持Run的独立性
+func (te *TemplateEngine) processConditionalsPreservingRuns(runs []Run, data *TemplateData) []Run {
+	finalRuns := make([]Run, 0)
+
+	for _, run := range runs {
+		originalContent := run.Text.Content
+		processedContent := te.renderConditionals(originalContent, data.Conditions)
+
+		// 如果内容发生变化，更新这个Run
+		if processedContent != originalContent {
+			newRun := run // 复制Run结构
+			newRun.Text.Content = processedContent
+			finalRuns = append(finalRuns, newRun)
+		} else {
+			// 内容没有变化，保持原样
+			finalRuns = append(finalRuns, run)
+		}
+	}
+
+	return finalRuns
+}
+
+// processConditionals 处理条件语句
+func (te *TemplateEngine) processConditionals(originalRunInfos []struct {
+	startIndex int
+	endIndex   int
+	run        *Run
+}, originalText string, data *TemplateData) ([]Run, bool) {
+
+	processedText := te.renderConditionals(originalText, data.Conditions)
+
+	if processedText == originalText {
+		// 没有变化，返回原始Runs
+		newRuns := make([]Run, len(originalRunInfos))
+		for i, runInfo := range originalRunInfos {
+			newRuns[i] = te.cloneRun(runInfo.run)
+		}
+		return newRuns, false
+	}
+
+	// 有条件语句被处理，简化处理
+	if len(originalRunInfos) == 1 {
+		newRun := te.cloneRun(originalRunInfos[0].run)
+		newRun.Text.Content = processedText
+		return []Run{newRun}, true
+	}
+
+	// 多个Run的情况，使用第一个Run的样式
+	newRun := te.cloneRun(originalRunInfos[0].run)
+	newRun.Text.Content = processedText
+	return []Run{newRun}, true
+}
+
+// extractRunsForSegment 为文本片段提取相应的Run（改进版本）
+func (te *TemplateEngine) extractRunsForSegment(originalRunInfos []struct {
+	startIndex int
+	endIndex   int
+	run        *Run
+}, segmentStart, segmentEnd int, segmentText string) []Run {
+	runs := make([]Run, 0)
+
+	for _, runInfo := range originalRunInfos {
+		// 检查Run是否与文本段有重叠
+		if runInfo.endIndex > segmentStart && runInfo.startIndex < segmentEnd {
+			overlapStart := max(runInfo.startIndex, segmentStart)
+			overlapEnd := min(runInfo.endIndex, segmentEnd)
+
+			if overlapEnd > overlapStart {
+				newRun := te.cloneRun(runInfo.run)
+				// 计算在分段文本中的相对位置
+				relativeStart := overlapStart - segmentStart
+				relativeEnd := overlapEnd - segmentStart
+
+				// 确保索引在有效范围内
+				if relativeStart >= 0 && relativeEnd <= len(segmentText) && relativeStart < relativeEnd {
+					newRun.Text.Content = segmentText[relativeStart:relativeEnd]
+					if newRun.Text.Content != "" {
+						runs = append(runs, newRun)
+					}
+				}
+			}
+		}
+	}
+
+	return runs
+}
+
+// findRunForPosition 找到覆盖指定位置的Run
+func (te *TemplateEngine) findRunForPosition(originalRunInfos []struct {
+	startIndex int
+	endIndex   int
+	run        *Run
+}, position int) *Run {
+	for _, runInfo := range originalRunInfos {
+		if position >= runInfo.startIndex && position < runInfo.endIndex {
+			return runInfo.run
+		}
+	}
+	// 如果没找到，返回第一个Run
+	if len(originalRunInfos) > 0 {
+		return originalRunInfos[0].run
+	}
+	return nil
+}
+
+// max 返回两个整数中的较大值
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // replaceVariablesInTable 在表格中替换变量和处理表格模板
@@ -877,6 +1743,9 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 								content = strings.ReplaceAll(content, placeholder, te.interfaceToString(value))
 							}
 
+							// 处理条件语句
+							content = te.renderLoopConditionals(content, itemMap)
+
 							newRow.Cells[i].Paragraphs[j].Runs[k].Text.Content = content
 						}
 					}
@@ -894,42 +1763,6 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 	table.Rows = newRows
 
 	return nil
-}
-
-// cloneTableRow 克隆表格行
-func (te *TemplateEngine) cloneTableRow(row *TableRow) *TableRow {
-	newRow := &TableRow{
-		Properties: row.Properties,
-		Cells:      make([]TableCell, len(row.Cells)),
-	}
-
-	for i, cell := range row.Cells {
-		newCell := TableCell{
-			Properties: cell.Properties,
-			Paragraphs: make([]Paragraph, len(cell.Paragraphs)),
-		}
-
-		for j, para := range cell.Paragraphs {
-			newPara := Paragraph{
-				Properties: para.Properties,
-				Runs:       make([]Run, len(para.Runs)),
-			}
-
-			for k, run := range para.Runs {
-				newRun := Run{
-					Properties: run.Properties,
-					Text:       Text{Content: run.Text.Content},
-				}
-				newPara.Runs[k] = newRun
-			}
-
-			newCell.Paragraphs[j] = newPara
-		}
-
-		newRow.Cells[i] = newCell
-	}
-
-	return newRow
 }
 
 // NewTemplateData 创建新的模板数据

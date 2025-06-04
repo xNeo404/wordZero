@@ -308,7 +308,7 @@ style, err := quickAPI.CreateQuickStyle(config)`
 	mixedPara.AddFormattedText("斜体文本", &document.TextFormat{Italic: true})
 	mixedPara.AddFormattedText("，", nil)
 	mixedPara.AddFormattedText("代码文本", &document.TextFormat{
-		FontName: "Consolas", FontColor: "E7484F", FontSize: 10})
+		FontFamily: "Consolas", FontColor: "E7484F", FontSize: 10})
 	mixedPara.AddFormattedText("，以及", nil)
 	mixedPara.AddFormattedText("重要高亮文本", &document.TextFormat{
 		Bold: true, FontColor: "FF0000"})

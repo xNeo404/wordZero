@@ -36,10 +36,10 @@ func main() {
 	fmt.Println("2. 设置表头格式...")
 	headerFormat := &document.CellFormat{
 		TextFormat: &document.TextFormat{
-			Bold:      true,
-			FontSize:  14,
-			FontColor: "FFFFFF", // 白色文字
-			FontName:  "微软雅黑",
+			Bold:       true,
+			FontSize:   14,
+			FontColor:  "FFFFFF", // 白色文字
+			FontFamily: "微软雅黑",
 		},
 		HorizontalAlign: document.CellAlignCenter,
 		VerticalAlign:   document.CellVAlignCenter,
@@ -57,8 +57,8 @@ func main() {
 	fmt.Println("3. 设置数据行格式...")
 	dataFormat := &document.CellFormat{
 		TextFormat: &document.TextFormat{
-			FontSize: 12,
-			FontName: "宋体",
+			FontSize:   12,
+			FontFamily: "宋体",
 		},
 		HorizontalAlign: document.CellAlignCenter,
 		VerticalAlign:   document.CellVAlignCenter,

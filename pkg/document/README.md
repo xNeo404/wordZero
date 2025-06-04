@@ -117,7 +117,8 @@
 - [`LoadTemplate(name, content string)`](template.go) - 从字符串加载模板
 - [`LoadTemplateFromDocument(name string, doc *Document)`](template.go) - 从现有文档创建模板
 - [`GetTemplate(name string)`](template.go) - 获取缓存的模板
-- [`RenderToDocument(templateName string, data *TemplateData)`](template.go) - 渲染模板到新文档
+- [`RenderTemplateToDocument(templateName string, data *TemplateData)`](template.go) - 渲染模板到新文档（推荐方法）
+- [`RenderToDocument(templateName string, data *TemplateData)`](template.go) - 渲染模板到新文档（传统方法）
 - [`ValidateTemplate(template *Template)`](template.go) - 验证模板语法
 - [`ClearCache()`](template.go) - 清空模板缓存
 - [`RemoveTemplate(name string)`](template.go) - 移除指定模板
@@ -291,8 +292,8 @@ func demonstrateTemplateInheritance() {
     }
     data.SetList("channels", channels)
     
-    // 渲染并保存
-    doc, _ := engine.RenderToDocument("sales_report", data)
+    // 渲染并保存（推荐方法）
+    doc, _ := engine.RenderTemplateToDocument("sales_report", data)
     doc.Save("sales_report.docx")
 }
 ```

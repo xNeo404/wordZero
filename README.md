@@ -124,7 +124,7 @@ data.SetVariable("achievement", "125")
 data.SetVariable("totalSales", "1,850,000")
 data.SetVariable("newCustomers", "45")
 
-doc, _ := engine.RenderToDocument("sales_report", data)
+doc, _ := engine.RenderTemplateToDocument("sales_report", data)
 doc.Save("sales_report.docx")
 ```
 
