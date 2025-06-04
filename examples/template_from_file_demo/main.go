@@ -362,10 +362,10 @@ func createTeamSection(doc *document.Document) {
 	}
 
 	// 设置模板行（包含循环语法）
-	teamTable.SetCellText(1, 0, "{{#each team}}{{name}}")
-	teamTable.SetCellText(1, 1, "{{role}}")
-	teamTable.SetCellText(1, 2, "{{work}}")
-	teamTable.SetCellText(1, 3, "{{#if isLeader}}是{{else}}否{{/if}}{{/each}}")
+	teamTable.SetCellText(1, 0, "{{#each team}}{{name}}{{/each}}")
+	teamTable.SetCellText(1, 1, "{{#each team}}{{role}}{{/each}}")
+	teamTable.SetCellText(1, 2, "{{#each team}}{{work}}{{/each}}")
+	teamTable.SetCellText(1, 3, "{{#each team}}{{#if isLeader}}是{{else}}否{{/if}}{{/each}}")
 
 	doc.Body.AddElement(teamTable)
 }
@@ -403,11 +403,11 @@ func createTaskSection(doc *document.Document) {
 	}
 
 	// 设置模板行
-	taskTable.SetCellText(1, 0, "{{#each tasks}}{{name}}")
-	taskTable.SetCellText(1, 1, "{{status}}")
-	taskTable.SetCellText(1, 2, "{{progress}}%")
-	taskTable.SetCellText(1, 3, "{{responsible}}")
-	taskTable.SetCellText(1, 4, "{{priority}}{{/each}}")
+	taskTable.SetCellText(1, 0, "{{#each tasks}}{{name}}{{/each}}")
+	taskTable.SetCellText(1, 1, "{{#each tasks}}{{status}}{{/each}}")
+	taskTable.SetCellText(1, 2, "{{#each tasks}}{{progress}}%{{/each}}")
+	taskTable.SetCellText(1, 3, "{{#each tasks}}{{responsible}}{{/each}}")
+	taskTable.SetCellText(1, 4, "{{#each tasks}}{{priority}}{{/each}}")
 
 	doc.Body.AddElement(taskTable)
 }
@@ -445,10 +445,10 @@ func createMilestoneSection(doc *document.Document) {
 	}
 
 	// 设置模板行
-	milestoneTable.SetCellText(1, 0, "{{#each milestones}}{{name}}")
-	milestoneTable.SetCellText(1, 1, "{{date}}")
-	milestoneTable.SetCellText(1, 2, "{{status}}")
-	milestoneTable.SetCellText(1, 3, "{{#if completed}}✓{{/if}}{{#if notCompleted}}○{{/if}}{{/each}}")
+	milestoneTable.SetCellText(1, 0, "{{#each milestones}}{{name}}{{/each}}")
+	milestoneTable.SetCellText(1, 1, "{{#each milestones}}{{date}}{{/each}}")
+	milestoneTable.SetCellText(1, 2, "{{#each milestones}}{{status}}{{/each}}")
+	milestoneTable.SetCellText(1, 3, "{{#each milestones}}{{#if completed}}✓{{/if}}{{#if notCompleted}}○{{/if}}{{/each}}")
 
 	doc.Body.AddElement(milestoneTable)
 }
@@ -486,9 +486,9 @@ func createStatisticsSection(doc *document.Document) {
 	}
 
 	// 设置模板行
-	statsTable.SetCellText(1, 0, "{{#each statistics}}{{metric}}")
-	statsTable.SetCellText(1, 1, "{{value}}")
-	statsTable.SetCellText(1, 2, "{{unit}}{{/each}}")
+	statsTable.SetCellText(1, 0, "{{#each statistics}}{{metric}}{{/each}}")
+	statsTable.SetCellText(1, 1, "{{#each statistics}}{{value}}{{/each}}")
+	statsTable.SetCellText(1, 2, "{{#each statistics}}{{unit}}{{/each}}")
 
 	doc.Body.AddElement(statsTable)
 }

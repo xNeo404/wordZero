@@ -1508,6 +1508,75 @@ func (d *Document) parseTableProperties(decoder *xml.Decoder, table *Table) erro
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return err
 				}
+			case "tblLook":
+				// 解析表格外观
+				tableLook := &TableLook{
+					Val:      getAttributeValue(t.Attr, "val"),
+					FirstRow: getAttributeValue(t.Attr, "firstRow"),
+					LastRow:  getAttributeValue(t.Attr, "lastRow"),
+					FirstCol: getAttributeValue(t.Attr, "firstColumn"),
+					LastCol:  getAttributeValue(t.Attr, "lastColumn"),
+					NoHBand:  getAttributeValue(t.Attr, "noHBand"),
+					NoVBand:  getAttributeValue(t.Attr, "noVBand"),
+				}
+				table.Properties.TableLook = tableLook
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "tblStyle":
+				// 解析表格样式
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					table.Properties.TableStyle = &TableStyle{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "tblBorders":
+				// 解析表格边框
+				borders, err := d.parseTableBorders(decoder)
+				if err != nil {
+					return err
+				}
+				table.Properties.TableBorders = borders
+			case "shd":
+				// 解析表格底纹
+				shd := &TableShading{
+					Val:       getAttributeValue(t.Attr, "val"),
+					Color:     getAttributeValue(t.Attr, "color"),
+					Fill:      getAttributeValue(t.Attr, "fill"),
+					ThemeFill: getAttributeValue(t.Attr, "themeFill"),
+				}
+				table.Properties.Shd = shd
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "tblCellMar":
+				// 解析表格单元格边距
+				margins, err := d.parseTableCellMargins(decoder)
+				if err != nil {
+					return err
+				}
+				table.Properties.TableCellMar = margins
+			case "tblLayout":
+				// 解析表格布局
+				layoutType := getAttributeValue(t.Attr, "type")
+				if layoutType != "" {
+					table.Properties.TableLayout = &TableLayoutType{Type: layoutType}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
+			case "tblInd":
+				// 解析表格缩进
+				w := getAttributeValue(t.Attr, "w")
+				indType := getAttributeValue(t.Attr, "type")
+				if w != "" || indType != "" {
+					table.Properties.TableInd = &TableIndentation{W: w, Type: indType}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return err
+				}
 			default:
 				// 跳过其他表格属性，可以根据需要扩展
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
@@ -1573,10 +1642,12 @@ func (d *Document) parseTableRow(decoder *xml.Decoder, startElement xml.StartEle
 		case xml.StartElement:
 			switch t.Name.Local {
 			case "trPr":
-				// 解析行属性（暂时跳过，可以根据需要扩展）
-				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				// 解析行属性
+				props, err := d.parseTableRowProperties(decoder)
+				if err != nil {
 					return nil, err
 				}
+				row.Properties = props
 			case "tc":
 				// 解析表格单元格
 				cell, err := d.parseTableCell(decoder, t)
@@ -1615,10 +1686,12 @@ func (d *Document) parseTableCell(decoder *xml.Decoder, startElement xml.StartEl
 		case xml.StartElement:
 			switch t.Name.Local {
 			case "tcPr":
-				// 解析单元格属性（暂时跳过，可以根据需要扩展）
-				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				// 解析单元格属性
+				props, err := d.parseTableCellProperties(decoder)
+				if err != nil {
 					return nil, err
 				}
+				cell.Properties = props
 			case "p":
 				// 解析段落
 				para, err := d.parseParagraph(decoder, t)
@@ -1964,4 +2037,340 @@ func (b *Body) GetTables() []*Table {
 // AddElement 添加元素到文档主体
 func (b *Body) AddElement(element interface{}) {
 	b.Elements = append(b.Elements, element)
+}
+
+// parseTableBorders 解析表格边框
+func (d *Document) parseTableBorders(decoder *xml.Decoder) (*TableBorders, error) {
+	borders := &TableBorders{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_borders", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			border := &TableBorder{
+				Val:        getAttributeValue(t.Attr, "val"),
+				Sz:         getAttributeValue(t.Attr, "sz"),
+				Space:      getAttributeValue(t.Attr, "space"),
+				Color:      getAttributeValue(t.Attr, "color"),
+				ThemeColor: getAttributeValue(t.Attr, "themeColor"),
+			}
+
+			switch t.Name.Local {
+			case "top":
+				borders.Top = border
+			case "left":
+				borders.Left = border
+			case "bottom":
+				borders.Bottom = border
+			case "right":
+				borders.Right = border
+			case "insideH":
+				borders.InsideH = border
+			case "insideV":
+				borders.InsideV = border
+			}
+
+			if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				return nil, err
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tblBorders" {
+				return borders, nil
+			}
+		}
+	}
+}
+
+// parseTableCellMargins 解析表格单元格边距
+func (d *Document) parseTableCellMargins(decoder *xml.Decoder) (*TableCellMargins, error) {
+	margins := &TableCellMargins{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_cell_margins", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			space := &TableCellSpace{
+				W:    getAttributeValue(t.Attr, "w"),
+				Type: getAttributeValue(t.Attr, "type"),
+			}
+
+			switch t.Name.Local {
+			case "top":
+				margins.Top = space
+			case "left":
+				margins.Left = space
+			case "bottom":
+				margins.Bottom = space
+			case "right":
+				margins.Right = space
+			}
+
+			if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				return nil, err
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tblCellMar" {
+				return margins, nil
+			}
+		}
+	}
+}
+
+// parseTableCellProperties 解析表格单元格属性
+func (d *Document) parseTableCellProperties(decoder *xml.Decoder) (*TableCellProperties, error) {
+	props := &TableCellProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_cell_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "tcW":
+				// 解析单元格宽度
+				w := getAttributeValue(t.Attr, "w")
+				wType := getAttributeValue(t.Attr, "type")
+				if w != "" || wType != "" {
+					props.TableCellW = &TableCellW{W: w, Type: wType}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "vAlign":
+				// 解析垂直对齐
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					props.VAlign = &VAlign{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "gridSpan":
+				// 解析网格跨度
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					props.GridSpan = &GridSpan{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "vMerge":
+				// 解析垂直合并
+				val := getAttributeValue(t.Attr, "val")
+				props.VMerge = &VMerge{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "textDirection":
+				// 解析文字方向
+				val := getAttributeValue(t.Attr, "val")
+				if val != "" {
+					props.TextDirection = &TextDirection{Val: val}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "shd":
+				// 解析单元格底纹
+				shd := &TableCellShading{
+					Val:       getAttributeValue(t.Attr, "val"),
+					Color:     getAttributeValue(t.Attr, "color"),
+					Fill:      getAttributeValue(t.Attr, "fill"),
+					ThemeFill: getAttributeValue(t.Attr, "themeFill"),
+				}
+				props.Shd = shd
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "tcBorders":
+				// 解析单元格边框
+				borders, err := d.parseTableCellBorders(decoder)
+				if err != nil {
+					return nil, err
+				}
+				props.TcBorders = borders
+			case "tcMar":
+				// 解析单元格边距
+				margins, err := d.parseTableCellMarginsCell(decoder)
+				if err != nil {
+					return nil, err
+				}
+				props.TcMar = margins
+			case "noWrap":
+				// 解析禁止换行
+				val := getAttributeValue(t.Attr, "val")
+				props.NoWrap = &NoWrap{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "hideMark":
+				// 解析隐藏标记
+				val := getAttributeValue(t.Attr, "val")
+				props.HideMark = &HideMark{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			default:
+				// 跳过其他未处理的单元格属性
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tcPr" {
+				return props, nil
+			}
+		}
+	}
+}
+
+// parseTableCellBorders 解析表格单元格边框
+func (d *Document) parseTableCellBorders(decoder *xml.Decoder) (*TableCellBorders, error) {
+	borders := &TableCellBorders{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_cell_borders", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			border := &TableCellBorder{
+				Val:        getAttributeValue(t.Attr, "val"),
+				Sz:         getAttributeValue(t.Attr, "sz"),
+				Space:      getAttributeValue(t.Attr, "space"),
+				Color:      getAttributeValue(t.Attr, "color"),
+				ThemeColor: getAttributeValue(t.Attr, "themeColor"),
+			}
+
+			switch t.Name.Local {
+			case "top":
+				borders.Top = border
+			case "left":
+				borders.Left = border
+			case "bottom":
+				borders.Bottom = border
+			case "right":
+				borders.Right = border
+			case "insideH":
+				borders.InsideH = border
+			case "insideV":
+				borders.InsideV = border
+			case "tl2br":
+				borders.TL2BR = border
+			case "tr2bl":
+				borders.TR2BL = border
+			}
+
+			if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				return nil, err
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tcBorders" {
+				return borders, nil
+			}
+		}
+	}
+}
+
+// parseTableCellMarginsCell 解析表格单元格边距（单元格级别）
+func (d *Document) parseTableCellMarginsCell(decoder *xml.Decoder) (*TableCellMarginsCell, error) {
+	margins := &TableCellMarginsCell{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_cell_margins_cell", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			space := &TableCellSpaceCell{
+				W:    getAttributeValue(t.Attr, "w"),
+				Type: getAttributeValue(t.Attr, "type"),
+			}
+
+			switch t.Name.Local {
+			case "top":
+				margins.Top = space
+			case "left":
+				margins.Left = space
+			case "bottom":
+				margins.Bottom = space
+			case "right":
+				margins.Right = space
+			}
+
+			if err := d.skipElement(decoder, t.Name.Local); err != nil {
+				return nil, err
+			}
+		case xml.EndElement:
+			if t.Name.Local == "tcMar" {
+				return margins, nil
+			}
+		}
+	}
+}
+
+// parseTableRowProperties 解析表格行属性
+func (d *Document) parseTableRowProperties(decoder *xml.Decoder) (*TableRowProperties, error) {
+	props := &TableRowProperties{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, WrapError("parse_table_row_properties", err)
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "trHeight":
+				// 解析行高
+				val := getAttributeValue(t.Attr, "val")
+				hRule := getAttributeValue(t.Attr, "hRule")
+				if val != "" || hRule != "" {
+					props.TableRowH = &TableRowH{Val: val, HRule: hRule}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "cantSplit":
+				// 解析禁止跨页分割
+				val := getAttributeValue(t.Attr, "val")
+				props.CantSplit = &CantSplit{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			case "tblHeader":
+				// 解析标题行重复
+				val := getAttributeValue(t.Attr, "val")
+				props.TblHeader = &TblHeader{Val: val}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			default:
+				// 跳过其他行属性
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == "trPr" {
+				return props, nil
+			}
+		}
+	}
 }

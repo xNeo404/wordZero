@@ -82,8 +82,51 @@ type RunProperties struct {
 
 // TableProperties 表格样式属性
 type TableProperties struct {
-	XMLName xml.Name `xml:"w:tblPr"`
-	// 表格样式属性将在后续实现
+	XMLName    xml.Name       `xml:"w:tblPr"`
+	TblInd     *TblIndent     `xml:"w:tblInd,omitempty"`     // 表格缩进
+	TblBorders *TblBorders    `xml:"w:tblBorders,omitempty"` // 表格边框
+	TblCellMar *TblCellMargin `xml:"w:tblCellMar,omitempty"` // 表格单元格边距
+}
+
+// TblIndent 表格缩进
+type TblIndent struct {
+	XMLName xml.Name `xml:"w:tblInd"`
+	W       string   `xml:"w:w,attr"`
+	Type    string   `xml:"w:type,attr"`
+}
+
+// TblBorders 表格边框
+type TblBorders struct {
+	XMLName xml.Name   `xml:"w:tblBorders"`
+	Top     *TblBorder `xml:"w:top,omitempty"`
+	Left    *TblBorder `xml:"w:left,omitempty"`
+	Bottom  *TblBorder `xml:"w:bottom,omitempty"`
+	Right   *TblBorder `xml:"w:right,omitempty"`
+	InsideH *TblBorder `xml:"w:insideH,omitempty"`
+	InsideV *TblBorder `xml:"w:insideV,omitempty"`
+}
+
+// TblBorder 表格边框定义
+type TblBorder struct {
+	Val   string `xml:"w:val,attr"`
+	Sz    string `xml:"w:sz,attr"`
+	Space string `xml:"w:space,attr"`
+	Color string `xml:"w:color,attr"`
+}
+
+// TblCellMargin 表格单元格边距
+type TblCellMargin struct {
+	XMLName xml.Name      `xml:"w:tblCellMar"`
+	Top     *TblCellSpace `xml:"w:top,omitempty"`
+	Left    *TblCellSpace `xml:"w:left,omitempty"`
+	Bottom  *TblCellSpace `xml:"w:bottom,omitempty"`
+	Right   *TblCellSpace `xml:"w:right,omitempty"`
+}
+
+// TblCellSpace 表格单元格空间
+type TblCellSpace struct {
+	W    string `xml:"w:w,attr"`
+	Type string `xml:"w:type,attr"`
 }
 
 // TableRowProperties 表格行样式属性
@@ -236,13 +279,6 @@ func (sm *StyleManager) addNormalStyle() {
 		Default: true,
 		Name: &StyleName{
 			Val: "Normal",
-		},
-		ParagraphPr: &ParagraphProperties{
-			Spacing: &Spacing{
-				After:    "200", // 10磅段后间距
-				Line:     "276", // 1.15倍行间距
-				LineRule: "auto",
-			},
 		},
 		RunPr: &RunProperties{
 			FontSize: &FontSize{
@@ -806,6 +842,9 @@ func (sm *StyleManager) addSpecialStyles() {
 		},
 	}
 	sm.AddStyle(codeBlock)
+
+	// 添加表格样式
+	sm.addTableStyles()
 }
 
 // addTOCStyles 添加TOC（目录）样式
@@ -1193,6 +1232,318 @@ func (sm *StyleManager) StyleExists(styleID string) bool {
 	return exists
 }
 
+// Clone 深拷贝样式管理器，用于模板渲染时避免样式冲突
+func (sm *StyleManager) Clone() *StyleManager {
+	clonedSM := &StyleManager{
+		styles: make(map[string]*Style),
+	}
+
+	// 深拷贝所有样式
+	for styleID, style := range sm.styles {
+		clonedSM.styles[styleID] = sm.cloneStyle(style)
+	}
+
+	return clonedSM
+}
+
+// cloneStyle 深拷贝单个样式
+func (sm *StyleManager) cloneStyle(source *Style) *Style {
+	if source == nil {
+		return nil
+	}
+
+	cloned := &Style{
+		Type:        source.Type,
+		StyleID:     source.StyleID,
+		Default:     source.Default,
+		CustomStyle: source.CustomStyle,
+	}
+
+	// 克隆样式名称
+	if source.Name != nil {
+		cloned.Name = &StyleName{Val: source.Name.Val}
+	}
+
+	// 克隆基于样式
+	if source.BasedOn != nil {
+		cloned.BasedOn = &BasedOn{Val: source.BasedOn.Val}
+	}
+
+	// 克隆下一样式
+	if source.Next != nil {
+		cloned.Next = &Next{Val: source.Next.Val}
+	}
+
+	// 克隆段落属性
+	if source.ParagraphPr != nil {
+		cloned.ParagraphPr = sm.cloneParagraphProperties(source.ParagraphPr)
+	}
+
+	// 克隆字符属性
+	if source.RunPr != nil {
+		cloned.RunPr = sm.cloneRunProperties(source.RunPr)
+	}
+
+	// 克隆表格属性
+	if source.TablePr != nil {
+		cloned.TablePr = sm.cloneTableProperties(source.TablePr)
+	}
+
+	// 克隆表格行属性
+	if source.TableRowPr != nil {
+		cloned.TableRowPr = sm.cloneTableRowProperties(source.TableRowPr)
+	}
+
+	// 克隆表格单元格属性
+	if source.TableCellPr != nil {
+		cloned.TableCellPr = sm.cloneTableCellProperties(source.TableCellPr)
+	}
+
+	return cloned
+}
+
+// cloneParagraphProperties 深拷贝段落属性
+func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *ParagraphProperties {
+	if source == nil {
+		return nil
+	}
+
+	cloned := &ParagraphProperties{}
+
+	// 克隆间距
+	if source.Spacing != nil {
+		cloned.Spacing = &Spacing{
+			Before:   source.Spacing.Before,
+			After:    source.Spacing.After,
+			Line:     source.Spacing.Line,
+			LineRule: source.Spacing.LineRule,
+		}
+	}
+
+	// 克隆对齐方式
+	if source.Justification != nil {
+		cloned.Justification = &Justification{Val: source.Justification.Val}
+	}
+
+	// 克隆缩进
+	if source.Indentation != nil {
+		cloned.Indentation = &Indentation{
+			FirstLine: source.Indentation.FirstLine,
+			Left:      source.Indentation.Left,
+			Right:     source.Indentation.Right,
+		}
+	}
+
+	// 克隆保持属性
+	if source.KeepNext != nil {
+		cloned.KeepNext = &KeepNext{}
+	}
+
+	if source.KeepLines != nil {
+		cloned.KeepLines = &KeepLines{}
+	}
+
+	// 克隆分页属性
+	if source.PageBreak != nil {
+		cloned.PageBreak = &PageBreak{}
+	}
+
+	// 克隆大纲级别
+	if source.OutlineLevel != nil {
+		cloned.OutlineLevel = &OutlineLevel{Val: source.OutlineLevel.Val}
+	}
+
+	return cloned
+}
+
+// cloneRunProperties 深拷贝字符属性
+func (sm *StyleManager) cloneRunProperties(source *RunProperties) *RunProperties {
+	if source == nil {
+		return nil
+	}
+
+	cloned := &RunProperties{}
+
+	// 克隆字体格式
+	if source.Bold != nil {
+		cloned.Bold = &Bold{}
+	}
+
+	if source.Italic != nil {
+		cloned.Italic = &Italic{}
+	}
+
+	if source.Underline != nil {
+		cloned.Underline = &Underline{Val: source.Underline.Val}
+	}
+
+	if source.Strike != nil {
+		cloned.Strike = &Strike{}
+	}
+
+	// 克隆字体大小
+	if source.FontSize != nil {
+		cloned.FontSize = &FontSize{Val: source.FontSize.Val}
+	}
+
+	// 克隆颜色
+	if source.Color != nil {
+		cloned.Color = &Color{Val: source.Color.Val}
+	}
+
+	// 克隆字体族
+	if source.FontFamily != nil {
+		cloned.FontFamily = &FontFamily{
+			ASCII:    source.FontFamily.ASCII,
+			EastAsia: source.FontFamily.EastAsia,
+			HAnsi:    source.FontFamily.HAnsi,
+			CS:       source.FontFamily.CS,
+		}
+	}
+
+	// 克隆高亮
+	if source.Highlight != nil {
+		cloned.Highlight = &Highlight{Val: source.Highlight.Val}
+	}
+
+	return cloned
+}
+
+// cloneTableProperties 深拷贝表格属性
+func (sm *StyleManager) cloneTableProperties(source *TableProperties) *TableProperties {
+	if source == nil {
+		return nil
+	}
+
+	cloned := &TableProperties{}
+
+	// 克隆表格缩进
+	if source.TblInd != nil {
+		cloned.TblInd = &TblIndent{
+			W:    source.TblInd.W,
+			Type: source.TblInd.Type,
+		}
+	}
+
+	// 克隆表格边框
+	if source.TblBorders != nil {
+		cloned.TblBorders = &TblBorders{}
+
+		if source.TblBorders.Top != nil {
+			cloned.TblBorders.Top = &TblBorder{
+				Val:   source.TblBorders.Top.Val,
+				Sz:    source.TblBorders.Top.Sz,
+				Space: source.TblBorders.Top.Space,
+				Color: source.TblBorders.Top.Color,
+			}
+		}
+
+		if source.TblBorders.Left != nil {
+			cloned.TblBorders.Left = &TblBorder{
+				Val:   source.TblBorders.Left.Val,
+				Sz:    source.TblBorders.Left.Sz,
+				Space: source.TblBorders.Left.Space,
+				Color: source.TblBorders.Left.Color,
+			}
+		}
+
+		if source.TblBorders.Bottom != nil {
+			cloned.TblBorders.Bottom = &TblBorder{
+				Val:   source.TblBorders.Bottom.Val,
+				Sz:    source.TblBorders.Bottom.Sz,
+				Space: source.TblBorders.Bottom.Space,
+				Color: source.TblBorders.Bottom.Color,
+			}
+		}
+
+		if source.TblBorders.Right != nil {
+			cloned.TblBorders.Right = &TblBorder{
+				Val:   source.TblBorders.Right.Val,
+				Sz:    source.TblBorders.Right.Sz,
+				Space: source.TblBorders.Right.Space,
+				Color: source.TblBorders.Right.Color,
+			}
+		}
+
+		if source.TblBorders.InsideH != nil {
+			cloned.TblBorders.InsideH = &TblBorder{
+				Val:   source.TblBorders.InsideH.Val,
+				Sz:    source.TblBorders.InsideH.Sz,
+				Space: source.TblBorders.InsideH.Space,
+				Color: source.TblBorders.InsideH.Color,
+			}
+		}
+
+		if source.TblBorders.InsideV != nil {
+			cloned.TblBorders.InsideV = &TblBorder{
+				Val:   source.TblBorders.InsideV.Val,
+				Sz:    source.TblBorders.InsideV.Sz,
+				Space: source.TblBorders.InsideV.Space,
+				Color: source.TblBorders.InsideV.Color,
+			}
+		}
+	}
+
+	// 克隆表格单元格边距
+	if source.TblCellMar != nil {
+		cloned.TblCellMar = &TblCellMargin{}
+
+		if source.TblCellMar.Top != nil {
+			cloned.TblCellMar.Top = &TblCellSpace{
+				W:    source.TblCellMar.Top.W,
+				Type: source.TblCellMar.Top.Type,
+			}
+		}
+
+		if source.TblCellMar.Left != nil {
+			cloned.TblCellMar.Left = &TblCellSpace{
+				W:    source.TblCellMar.Left.W,
+				Type: source.TblCellMar.Left.Type,
+			}
+		}
+
+		if source.TblCellMar.Bottom != nil {
+			cloned.TblCellMar.Bottom = &TblCellSpace{
+				W:    source.TblCellMar.Bottom.W,
+				Type: source.TblCellMar.Bottom.Type,
+			}
+		}
+
+		if source.TblCellMar.Right != nil {
+			cloned.TblCellMar.Right = &TblCellSpace{
+				W:    source.TblCellMar.Right.W,
+				Type: source.TblCellMar.Right.Type,
+			}
+		}
+	}
+
+	return cloned
+}
+
+// cloneTableRowProperties 深拷贝表格行属性
+func (sm *StyleManager) cloneTableRowProperties(source *TableRowProperties) *TableRowProperties {
+	if source == nil {
+		return nil
+	}
+
+	// 目前表格行属性是空结构体，简单返回新实例
+	cloned := &TableRowProperties{}
+
+	return cloned
+}
+
+// cloneTableCellProperties 深拷贝表格单元格属性
+func (sm *StyleManager) cloneTableCellProperties(source *TableCellProperties) *TableCellProperties {
+	if source == nil {
+		return nil
+	}
+
+	// 目前表格单元格属性是空结构体，简单返回新实例
+	cloned := &TableCellProperties{}
+
+	return cloned
+}
+
 // GetStylesByType 按类型获取样式
 func (sm *StyleManager) GetStylesByType(styleType StyleType) []*Style {
 	var styles []*Style
@@ -1339,8 +1690,8 @@ func convertRunPropertiesToMap(props *RunProperties) map[string]interface{} {
 // ParseStylesFromXML 从XML数据解析样式
 func (sm *StyleManager) ParseStylesFromXML(xmlData []byte) error {
 	type stylesXML struct {
-		XMLName xml.Name `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main styles"`
-		Styles  []Style  `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main style"`
+		XMLName xml.Name `xml:"w:styles"`
+		Styles  []Style  `xml:"w:style"`
 	}
 
 	var styles stylesXML
@@ -1362,8 +1713,8 @@ func (sm *StyleManager) ParseStylesFromXML(xmlData []byte) error {
 // MergeStylesFromXML 从XML数据合并样式（保留现有样式，只添加新的）
 func (sm *StyleManager) MergeStylesFromXML(xmlData []byte) error {
 	type stylesXML struct {
-		XMLName xml.Name `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main styles"`
-		Styles  []Style  `xml:"http://schemas.openxmlformats.org/wordprocessingml/2006/main style"`
+		XMLName xml.Name `xml:"w:styles"`
+		Styles  []Style  `xml:"w:style"`
 	}
 
 	var styles stylesXML
@@ -1411,4 +1762,95 @@ func (sm *StyleManager) LoadStylesFromDocument(xmlData []byte) error {
 	}
 
 	return nil
+}
+
+// addTableStyles 添加表格样式
+func (sm *StyleManager) addTableStyles() {
+	// 普通表格样式 (Normal Table) - 默认表格样式
+	normalTable := &Style{
+		Type:    string(StyleTypeTable),
+		StyleID: "a1",
+		Default: true,
+		Name: &StyleName{
+			Val: "Normal Table",
+		},
+		TablePr: &TableProperties{
+			TblInd: &TblIndent{
+				W:    "0",
+				Type: "dxa",
+			},
+			TblCellMar: &TblCellMargin{
+				Top: &TblCellSpace{
+					W:    "0",
+					Type: "dxa",
+				},
+				Left: &TblCellSpace{
+					W:    "108",
+					Type: "dxa",
+				},
+				Bottom: &TblCellSpace{
+					W:    "0",
+					Type: "dxa",
+				},
+				Right: &TblCellSpace{
+					W:    "108",
+					Type: "dxa",
+				},
+			},
+		},
+	}
+	sm.AddStyle(normalTable)
+
+	// 表格网格样式 (Table Grid) - 基于Normal Table，添加边框
+	tableGrid := &Style{
+		Type:    string(StyleTypeTable),
+		StyleID: "ab",
+		Name: &StyleName{
+			Val: "Table Grid",
+		},
+		BasedOn: &BasedOn{
+			Val: "a1",
+		},
+		TablePr: &TableProperties{
+			TblBorders: &TblBorders{
+				Top: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				Left: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				Bottom: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				Right: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				InsideH: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+				InsideV: &TblBorder{
+					Val:   "single",
+					Sz:    "4",
+					Space: "0",
+					Color: "auto",
+				},
+			},
+		},
+	}
+	sm.AddStyle(tableGrid)
 }

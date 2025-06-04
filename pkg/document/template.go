@@ -403,18 +403,35 @@ func (te *TemplateEngine) renderVariables(content string, variables map[string]i
 	})
 }
 
-// renderConditionals 渲染条件语句
+// renderConditionals 渲染条件语句（支持if-else语法）
 func (te *TemplateEngine) renderConditionals(content string, conditions map[string]bool) string {
-	ifPattern := regexp.MustCompile(`(?s)\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}`)
+	ifElsePattern := regexp.MustCompile(`(?s)\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}`)
 
-	return ifPattern.ReplaceAllStringFunc(content, func(match string) string {
-		matches := ifPattern.FindStringSubmatch(match)
+	return ifElsePattern.ReplaceAllStringFunc(content, func(match string) string {
+		matches := ifElsePattern.FindStringSubmatch(match)
 		if len(matches) >= 3 {
 			condition := matches[1]
 			blockContent := matches[2]
 
-			if condValue, exists := conditions[condition]; exists && condValue {
-				return blockContent
+			// 检查是否有else部分
+			elsePattern := regexp.MustCompile(`(?s)(.*?)\{\{else\}\}(.*?)`)
+			elseMatches := elsePattern.FindStringSubmatch(blockContent)
+
+			if len(elseMatches) >= 3 {
+				// 有else部分
+				ifContent := elseMatches[1]
+				elseContent := elseMatches[2]
+
+				if condValue, exists := conditions[condition]; exists && condValue {
+					return ifContent
+				} else {
+					return elseContent
+				}
+			} else {
+				// 没有else部分，按原逻辑处理
+				if condValue, exists := conditions[condition]; exists && condValue {
+					return blockContent
+				}
 			}
 		}
 		return "" // 条件不满足，返回空字符串
@@ -460,49 +477,64 @@ func (te *TemplateEngine) renderLoops(content string, lists map[string][]interfa
 	})
 }
 
-// renderLoopConditionals 渲染循环内部的条件语句
+// renderLoopConditionals 渲染循环内部的条件语句（支持if-else语法）
 func (te *TemplateEngine) renderLoopConditionals(content string, itemData map[string]interface{}) string {
-	ifPattern := regexp.MustCompile(`(?s)\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}`)
+	ifElsePattern := regexp.MustCompile(`(?s)\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}`)
 
-	return ifPattern.ReplaceAllStringFunc(content, func(match string) string {
-		matches := ifPattern.FindStringSubmatch(match)
+	return ifElsePattern.ReplaceAllStringFunc(content, func(match string) string {
+		matches := ifElsePattern.FindStringSubmatch(match)
 		if len(matches) >= 3 {
 			condition := matches[1]
 			blockContent := matches[2]
 
+			// 检查是否有else部分
+			elsePattern := regexp.MustCompile(`(?s)(.*?)\{\{else\}\}(.*?)`)
+			elseMatches := elsePattern.FindStringSubmatch(blockContent)
+
+			var ifContent, elseContent string
+			hasElse := false
+
+			if len(elseMatches) >= 3 {
+				// 有else部分
+				ifContent = elseMatches[1]
+				elseContent = elseMatches[2]
+				hasElse = true
+			} else {
+				// 没有else部分
+				ifContent = blockContent
+			}
+
 			// 检查条件是否在当前循环项的数据中
 			if condValue, exists := itemData[condition]; exists {
 				// 转换为布尔值
+				conditionMet := false
 				switch v := condValue.(type) {
 				case bool:
-					if v {
-						return blockContent
-					}
+					conditionMet = v
 				case string:
-					if v == "true" || v == "1" || v == "yes" || v != "" {
-						return blockContent
-					}
+					conditionMet = v == "true" || v == "1" || v == "yes" || v != ""
 				case int:
-					if v != 0 {
-						return blockContent
-					}
+					conditionMet = v != 0
 				case int64:
-					if v != 0 {
-						return blockContent
-					}
+					conditionMet = v != 0
 				case float64:
-					if v != 0.0 {
-						return blockContent
-					}
+					conditionMet = v != 0.0
 				default:
 					// 对于其他类型，如果不为nil就认为是true
-					if v != nil {
-						return blockContent
-					}
+					conditionMet = v != nil
 				}
+
+				if conditionMet {
+					return ifContent
+				} else if hasElse {
+					return elseContent
+				}
+			} else if hasElse {
+				// 条件不存在，返回else部分
+				return elseContent
 			}
 		}
-		return "" // 条件不满足，返回空字符串
+		return "" // 条件不满足且没有else，返回空字符串
 	})
 }
 
@@ -615,53 +647,59 @@ func (te *TemplateEngine) cloneDocument(source *Document) *Document {
 	// 创建新文档
 	doc := New()
 
-	// 复制样式管理器
-	if source.styleManager != nil {
-		doc.styleManager = source.styleManager
-	}
-
-	// 复制所有文档部件，保持完整的文档结构
-	if source.parts != nil {
-		doc.parts = make(map[string][]byte)
-		for name, data := range source.parts {
-			// 深度复制每个部件的数据
-			copiedData := make([]byte, len(data))
-			copy(copiedData, data)
-			doc.parts[name] = copiedData
-		}
-	}
-
-	// 复制文档关系
-	if source.relationships != nil {
-		doc.relationships = source.relationships
-	}
-
-	// 复制文档级关系
-	if source.documentRelationships != nil {
-		doc.documentRelationships = source.documentRelationships
-	}
-
-	// 复制内容类型
-	if source.contentTypes != nil {
-		doc.contentTypes = source.contentTypes
-	}
-
-	// 深度复制文档体元素
+	// 深拷贝文档元素
 	for _, element := range source.Body.Elements {
 		switch elem := element.(type) {
 		case *Paragraph:
-			// 深度复制段落
-			newPara := te.cloneParagraph(elem)
-			doc.Body.Elements = append(doc.Body.Elements, newPara)
+			clonedPara := te.cloneParagraph(elem)
+			doc.Body.Elements = append(doc.Body.Elements, clonedPara)
 
 		case *Table:
-			// 深度复制表格
-			newTable := te.cloneTable(elem)
-			doc.Body.Elements = append(doc.Body.Elements, newTable)
+			clonedTable := te.cloneTable(elem)
+			doc.Body.Elements = append(doc.Body.Elements, clonedTable)
+
+		default:
+			// 其他类型暂时直接复制引用
+			doc.Body.Elements = append(doc.Body.Elements, element)
 		}
 	}
 
+	// 深拷贝样式管理器，确保模板渲染时的样式与原模板一致
+	if source.styleManager != nil {
+		doc.styleManager = source.styleManager.Clone()
+
+		// 特殊处理：如果克隆的样式管理器包含 Normal 样式的额外行距设置，
+		// 将其重置为无行距设置以保持与默认模板一致
+		te.adjustNormalStyleForTemplateCompatibility(doc)
+	}
+
 	return doc
+}
+
+// adjustNormalStyleForTemplateCompatibility 调整 Normal 样式以兼容模板
+// 主要用于解决模板渲染时行距不一致的问题
+func (te *TemplateEngine) adjustNormalStyleForTemplateCompatibility(doc *Document) {
+	if doc == nil || doc.styleManager == nil {
+		return
+	}
+
+	// 获取当前的 Normal 样式
+	normalStyle := doc.styleManager.GetStyle("Normal")
+	if normalStyle != nil && normalStyle.ParagraphPr != nil && normalStyle.ParagraphPr.Spacing != nil {
+		// 移除 Normal 样式中的额外行距设置，保持与原模板一致
+		normalStyle.ParagraphPr.Spacing = nil
+
+		// 如果段落属性现在为空，则将其设为 nil
+		if normalStyle.ParagraphPr.Justification == nil &&
+			normalStyle.ParagraphPr.Spacing == nil &&
+			normalStyle.ParagraphPr.Indentation == nil &&
+			normalStyle.ParagraphPr.KeepNext == nil &&
+			normalStyle.ParagraphPr.KeepLines == nil &&
+			normalStyle.ParagraphPr.PageBreak == nil &&
+			normalStyle.ParagraphPr.OutlineLevel == nil {
+			normalStyle.ParagraphPr = nil
+		}
+	}
 }
 
 // cloneParagraph 深度复制段落
@@ -873,6 +911,7 @@ func (te *TemplateEngine) cloneTable(source *Table) *Table {
 // cloneTableProperties 深度复制表格属性
 func (te *TemplateEngine) cloneTableProperties(source *TableProperties) *TableProperties {
 	if source == nil {
+		Debug("克隆表格属性: 源属性为空")
 		return nil
 	}
 
@@ -1354,7 +1393,57 @@ func (te *TemplateEngine) cloneTableCellProperties(source *TableCellProperties) 
 
 // applyRenderedContentToDocument 将渲染内容应用到文档
 func (te *TemplateEngine) applyRenderedContentToDocument(doc *Document, content string) error {
-	// 这个方法将被新的结构化处理方法替代
+	// 如果内容为空，直接返回
+	if strings.TrimSpace(content) == "" {
+		return nil
+	}
+
+	// 将内容按行分割并创建段落
+	lines := strings.Split(content, "\n")
+
+	for _, line := range lines {
+		// 创建新段落，即使是空行也要创建（保持格式）
+		para := &Paragraph{
+			Properties: &ParagraphProperties{
+				ParagraphStyle: &ParagraphStyle{Val: "Normal"},
+			},
+			Runs: []Run{},
+		}
+
+		// 如果行不为空，添加文本内容
+		if strings.TrimSpace(line) != "" {
+			run := Run{
+				Text: Text{Content: line},
+				Properties: &RunProperties{
+					FontFamily: &FontFamily{
+						ASCII:    "仿宋",
+						HAnsi:    "仿宋",
+						EastAsia: "仿宋",
+					},
+					FontSize: &FontSize{Val: "24"}, // 12pt = 24 half-points
+				},
+			}
+			para.Runs = append(para.Runs, run)
+		} else {
+			// 空行也需要一个空的Run来保持段落结构
+			run := Run{
+				Text: Text{Content: ""},
+				Properties: &RunProperties{
+					FontFamily: &FontFamily{
+						ASCII:    "仿宋",
+						HAnsi:    "仿宋",
+						EastAsia: "仿宋",
+					},
+					FontSize: &FontSize{Val: "24"},
+				},
+			}
+			para.Runs = append(para.Runs, run)
+		}
+
+		// 将段落添加到文档
+		doc.Body.Elements = append(doc.Body.Elements, para)
+	}
+
 	return nil
 }
 
@@ -1859,20 +1948,19 @@ func (te *TemplateEngine) replaceVariablesInTable(table *Table, data *TemplateDa
 	return nil
 }
 
-// isTableTemplate 检查表格是否包含模板语法
+// isTableTemplate 检查表格是否包含模板语法（支持跨Run检测）
 func (te *TemplateEngine) isTableTemplate(table *Table) bool {
 	if len(table.Rows) == 0 {
 		return false
 	}
 
-	// 检查所有行是否包含循环语法
+	// 检查所有行是否包含循环语法，支持跨Run检测
 	for _, row := range table.Rows {
 		for _, cell := range row.Cells {
 			for _, para := range cell.Paragraphs {
-				for _, run := range para.Runs {
-					if run.Text.Content != "" && te.containsTemplateLoop(run.Text.Content) {
-						return true
-					}
+				// 使用新的跨Run检测方法
+				if te.containsTemplateLoopInRuns(para.Runs) {
+					return true
 				}
 			}
 		}
@@ -1881,10 +1969,21 @@ func (te *TemplateEngine) isTableTemplate(table *Table) bool {
 	return false
 }
 
-// containsTemplateLoop 检查文本是否包含循环模板语法
+// containsTemplateLoop 检查文本是否包含循环模板语法（支持跨Run检测）
 func (te *TemplateEngine) containsTemplateLoop(text string) bool {
 	eachPattern := regexp.MustCompile(`\{\{#each\s+\w+\}\}`)
 	return eachPattern.MatchString(text)
+}
+
+// containsTemplateLoopInRuns 检查Run列表中是否包含循环模板语法（跨Run检测）
+func (te *TemplateEngine) containsTemplateLoopInRuns(runs []Run) bool {
+	// 合并所有Run的文本
+	fullText := ""
+	for _, run := range runs {
+		fullText += run.Text.Content
+	}
+
+	return te.containsTemplateLoop(fullText)
 }
 
 // renderTableTemplate 渲染表格模板
@@ -1899,7 +1998,7 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 
 	for i, row := range table.Rows {
 		found := false
-		// 重构每个单元格的文本，解决跨Run的变量问题
+		// 检查整行的所有单元格，合并文本来解决跨Run的变量问题
 		for _, cell := range row.Cells {
 			for _, para := range cell.Paragraphs {
 				// 合并所有Run的文本
@@ -1943,8 +2042,11 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 	templateRow := table.Rows[templateRowIndex]
 	newRows := make([]TableRow, 0)
 
-	// 保留模板行之前的行
-	newRows = append(newRows, table.Rows[:templateRowIndex]...)
+	// 保留模板行之前的行（深度克隆以保持样式）
+	for _, row := range table.Rows[:templateRowIndex] {
+		clonedRow := te.cloneTableRow(&row)
+		newRows = append(newRows, *clonedRow)
+	}
 
 	// 为每个数据项生成新行
 	for _, item := range listData {
@@ -1975,15 +2077,41 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 					// 处理条件语句
 					content = te.renderLoopConditionals(content, itemMap)
 
-					// 重建Run结构，保持第一个Run的样式
+					// 重建Run结构，更好地保持样式继承
 					if len(originalRuns) > 0 {
-						firstRun := originalRuns[0]
-						newRun := te.cloneRun(&firstRun)
-						newRun.Text.Content = content
-						newRow.Cells[i].Paragraphs[j].Runs = []Run{newRun}
+						// 寻找第一个有实际内容或样式的Run作为样式模板
+						var templateRun *Run
+						for k := range originalRuns {
+							if originalRuns[k].Properties != nil || originalRuns[k].Text.Content != "" {
+								templateRun = &originalRuns[k]
+								break
+							}
+						}
+
+						if templateRun != nil {
+							newRun := te.cloneRun(templateRun)
+							newRun.Text.Content = content
+							newRow.Cells[i].Paragraphs[j].Runs = []Run{newRun}
+						} else {
+							// 使用第一个Run但确保基本样式
+							newRun := te.cloneRun(&originalRuns[0])
+							newRun.Text.Content = content
+							// 确保基本的字体设置
+							if newRun.Properties == nil {
+								newRun.Properties = &RunProperties{}
+							}
+							if newRun.Properties.FontFamily == nil {
+								newRun.Properties.FontFamily = &FontFamily{
+									ASCII:    "仿宋",
+									HAnsi:    "仿宋",
+									EastAsia: "仿宋",
+								}
+							}
+							newRow.Cells[i].Paragraphs[j].Runs = []Run{newRun}
+						}
 					} else {
-						// 如果没有原始Run，创建新的
-						newRow.Cells[i].Paragraphs[j].Runs = []Run{{
+						// 如果没有原始Run，创建新的但尝试继承段落样式
+						newRun := Run{
 							Text: Text{Content: content},
 							Properties: &RunProperties{
 								FontFamily: &FontFamily{
@@ -1993,7 +2121,17 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 								},
 								Bold: &Bold{},
 							},
-						}}
+						}
+
+						// 如果段落有默认的Run属性，尝试继承
+						if len(templateRow.Cells) > i && len(templateRow.Cells[i].Paragraphs) > j {
+							templatePara := &templateRow.Cells[i].Paragraphs[j]
+							if len(templatePara.Runs) > 0 && templatePara.Runs[0].Properties != nil {
+								newRun.Properties = te.cloneRunProperties(templatePara.Runs[0].Properties)
+							}
+						}
+
+						newRow.Cells[i].Paragraphs[j].Runs = []Run{newRun}
 					}
 				}
 			}
@@ -2002,8 +2140,11 @@ func (te *TemplateEngine) renderTableTemplate(table *Table, data *TemplateData) 
 		newRows = append(newRows, *newRow)
 	}
 
-	// 保留模板行之后的行
-	newRows = append(newRows, table.Rows[templateRowIndex+1:]...)
+	// 保留模板行之后的行（深度克隆以保持样式）
+	for _, row := range table.Rows[templateRowIndex+1:] {
+		clonedRow := te.cloneTableRow(&row)
+		newRows = append(newRows, *clonedRow)
+	}
 
 	// 更新表格行
 	table.Rows = newRows

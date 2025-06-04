@@ -113,6 +113,15 @@
 - [`CreateTOCSDT(title string, maxLevel int)`](sdt.go) - 创建目录SDT结构
 
 ### 模板功能 ✨ 新增功能
+
+#### 模板渲染器（推荐使用）✨
+- [`NewTemplateRenderer()`](template_engine.go) - 创建新的模板渲染器（推荐）
+- [`SetLogging(enabled bool)`](template_engine.go) - 设置日志记录
+- [`LoadTemplateFromFile(name, filePath string)`](template_engine.go) - 从DOCX文件加载模板
+- [`RenderTemplate(templateName string, data *TemplateData)`](template_engine.go) - 渲染模板（最推荐方法）
+- [`AnalyzeTemplate(templateName string)`](template_engine.go) - 分析模板结构
+
+#### 模板引擎（底层API）
 - [`NewTemplateEngine()`](template.go) - 创建新的模板引擎
 - [`LoadTemplate(name, content string)`](template.go) - 从字符串加载模板
 - [`LoadTemplateFromDocument(name string, doc *Document)`](template.go) - 从现有文档创建模板
@@ -135,6 +144,14 @@
 **循环内条件**: 完美支持循环内部的条件表达式，如 `{{#each items}}{{#if isActive}}...{{/if}}{{/each}}`
 **数据类型支持**: 支持字符串、数字、布尔值、对象等多种数据类型
 **结构体绑定**: 支持从Go结构体自动生成模板数据
+**模板分析**: ✨ **新增功能** 自动分析模板结构，提取变量、列表、条件和表格信息
+  - **结构分析**: 识别模板中使用的所有变量、列表和条件
+  - **表格分析**: 专门分析表格中的模板语法和循环结构
+  - **依赖检查**: 检查模板的数据依赖关系
+  - **示例数据生成**: 根据分析结果自动生成示例数据结构
+**日志记录**: ✨ **新增功能** 完善的日志系统，支持模板加载、渲染和分析过程的详细记录
+**数据验证**: ✨ **新增功能** 自动验证模板数据的完整性和格式正确性
+**DOCX模板支持**: ✨ **新增功能** 直接从现有DOCX文件加载模板
 
 ### 模板数据操作
 - [`NewTemplateData()`](template.go) - 创建新的模板数据
