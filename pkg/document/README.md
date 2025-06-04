@@ -967,6 +967,191 @@ options.StyleMapping = map[string]string{
 converter := markdown.NewConverter(options)
 ```
 
+## Word转Markdown功能 ✨ **新增功能**
+
+WordZero现在支持将Word文档反向转换为Markdown格式，提供完整的双向转换能力。
+
+### Word导出器API
+
+#### 导出器接口
+- [`NewExporter(options *ExportOptions)`](../markdown/exporter.go) - 创建新的Word导出器
+- [`DefaultExportOptions()`](../markdown/exporter.go) - 获取默认导出选项
+- [`HighQualityExportOptions()`](../markdown/exporter.go) - 获取高质量导出选项
+
+#### 导出方法
+- [`ExportToFile(docxPath, mdPath string, options *ExportOptions)`](../markdown/exporter.go) - 导出Word文档到Markdown文件
+- [`ExportToString(doc *Document, options *ExportOptions)`](../markdown/exporter.go) - 导出Word文档到Markdown字符串
+- [`ExportToBytes(doc *Document, options *ExportOptions)`](../markdown/exporter.go) - 导出Word文档到Markdown字节数组
+- [`BatchExport(inputs []string, outputDir string, options *ExportOptions)`](../markdown/exporter.go) - 批量导出Word文档
+
+#### 导出配置选项 (`ExportOptions`)
+- `UseGFMTables` - 使用GitHub风味Markdown表格
+- `PreserveFootnotes` - 保留脚注
+- `PreserveLineBreaks` - 保留换行符
+- `WrapLongLines` - 自动换行
+- `MaxLineLength` - 最大行长度
+- `ExtractImages` - 导出图片文件
+- `ImageOutputDir` - 图片输出目录
+- `ImageNamePattern` - 图片命名模式
+- `ImageRelativePath` - 使用相对路径
+- `PreserveBookmarks` - 保留书签
+- `ConvertHyperlinks` - 转换超链接
+- `PreserveCodeStyle` - 保留代码样式
+- `DefaultCodeLang` - 默认代码语言
+- `IgnoreUnknownStyles` - 忽略未知样式
+- `PreserveTOC` - 保留目录
+- `IncludeMetadata` - 包含文档元数据
+- `StripComments` - 删除注释
+- `UseSetext` - 使用Setext样式标题
+- `BulletListMarker` - 项目符号标记
+- `EmphasisMarker` - 强调标记
+- `StrictMode` - 严格模式
+- `IgnoreErrors` - 忽略错误
+- `ErrorCallback` - 错误回调函数
+- `ProgressCallback` - 进度回调函数
+
+### Word→Markdown转换映射
+
+| Word元素 | Markdown语法 | 说明 |
+|----------|-------------|------|
+| Heading1-6 | `# ## ### #### ##### ######` | 标题级别对应 |
+| 粗体 | `**粗体**` | 文本格式 |
+| 斜体 | `*斜体*` | 文本格式 |
+| 删除线 | `~~删除线~~` | 文本格式 |
+| 行内代码 | `` `代码` `` | 代码格式 |
+| 代码块 | ```` 代码块 ```` | 代码块 |
+| 超链接 | `[链接文本](URL)` | 链接转换 |
+| 图片 | `![图片](路径)` | 图片引用 |
+| 表格 | `\| 表格 \|` | GFM表格格式 |
+| 无序列表 | `- 项目` | 列表项 |
+| 有序列表 | `1. 项目` | 编号列表 |
+| 引用块 | `> 引用内容` | 引用格式 |
+
+### Word转Markdown使用示例
+
+#### 基础文件导出
+```go
+import "github.com/ZeroHawkeye/wordZero/pkg/markdown"
+
+// 创建导出器
+exporter := markdown.NewExporter(markdown.DefaultExportOptions())
+
+// 导出Word文档为Markdown
+err := exporter.ExportToFile("document.docx", "output.md", nil)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### 导出为字符串
+```go
+// 打开Word文档
+doc, err := document.Open("document.docx")
+if err != nil {
+    log.Fatal(err)
+}
+
+// 导出为Markdown字符串
+exporter := markdown.NewExporter(markdown.DefaultExportOptions())
+markdownText, err := exporter.ExportToString(doc, nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(markdownText)
+```
+
+#### 高质量导出配置
+```go
+// 高质量导出配置
+options := &markdown.ExportOptions{
+    UseGFMTables:      true,              // 使用GFM表格
+    ExtractImages:     true,              // 导出图片
+    ImageOutputDir:    "./images",        // 图片目录
+    PreserveFootnotes: true,              // 保留脚注
+    IncludeMetadata:   true,              // 包含元数据
+    ConvertHyperlinks: true,              // 转换超链接
+    PreserveCodeStyle: true,              // 保留代码样式
+    UseSetext:         false,             // 使用ATX标题
+    BulletListMarker:  "-",              // 使用短横线
+    EmphasisMarker:    "*",              // 使用星号
+    ProgressCallback: func(current, total int) {
+        fmt.Printf("导出进度: %d/%d\n", current, total)
+    },
+}
+
+exporter := markdown.NewExporter(options)
+err := exporter.ExportToFile("complex_document.docx", "output.md", options)
+```
+
+#### 批量导出示例
+```go
+// 批量导出Word文档
+files := []string{"doc1.docx", "doc2.docx", "doc3.docx"}
+
+options := &markdown.ExportOptions{
+    ExtractImages:     true,
+    ImageOutputDir:    "extracted_images/",
+    UseGFMTables:      true,
+    ProgressCallback: func(current, total int) {
+        fmt.Printf("批量导出进度: %d/%d\n", current, total)
+    },
+}
+
+exporter := markdown.NewExporter(options)
+err := exporter.BatchExport(files, "markdown_output/", options)
+```
+
+## 双向转换器 ✨ **统一接口**
+
+### 双向转换器API
+- [`NewBidirectionalConverter(mdOpts *ConvertOptions, exportOpts *ExportOptions)`](../markdown/exporter.go) - 创建双向转换器
+- [`AutoConvert(inputPath, outputPath string)`](../markdown/exporter.go) - 自动检测文件类型并转换
+
+### 双向转换使用示例
+
+#### 自动转换
+```go
+import "github.com/ZeroHawkeye/wordZero/pkg/markdown"
+
+// 创建双向转换器
+converter := markdown.NewBidirectionalConverter(
+    markdown.HighQualityOptions(),        // Markdown→Word选项
+    markdown.HighQualityExportOptions(),  // Word→Markdown选项
+)
+
+// 自动检测文件类型并转换
+err := converter.AutoConvert("input.docx", "output.md")     // Word→Markdown
+err = converter.AutoConvert("input.md", "output.docx")     // Markdown→Word
+```
+
+#### 配置独立的转换方向
+```go
+// Markdown转Word配置
+mdToWordOpts := &markdown.ConvertOptions{
+    EnableGFM:         true,
+    EnableTables:      true,
+    GenerateTOC:       true,
+    DefaultFontFamily: "Calibri",
+    DefaultFontSize:   11.0,
+}
+
+// Word转Markdown配置
+wordToMdOpts := &markdown.ExportOptions{
+    UseGFMTables:      true,
+    ExtractImages:     true,
+    ImageOutputDir:    "./images",
+    PreserveFootnotes: true,
+    ConvertHyperlinks: true,
+}
+
+// 创建双向转换器
+converter := markdown.NewBidirectionalConverter(mdToWordOpts, wordToMdOpts)
+
+// 执行转换
+err := converter.AutoConvert("document.docx", "document.md")
+```
+
 ### 技术特性
 
 #### 架构设计
