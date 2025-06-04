@@ -128,6 +128,75 @@ doc, _ := engine.RenderTemplateToDocument("sales_report", data)
 doc.Save("sales_report.docx")
 ```
 
+### Markdown转Word功能示例 ✨ **新增**
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/markdown"
+)
+
+func main() {
+    // 创建Markdown转换器
+    converter := markdown.NewConverter(markdown.DefaultOptions())
+    
+    // Markdown内容
+    markdownText := `# WordZero Markdown转换示例
+
+欢迎使用WordZero的**Markdown到Word**转换功能！
+
+## 支持的语法
+
+### 文本格式
+- **粗体文本**
+- *斜体文本*
+- ` + "`行内代码`" + `
+
+### 列表
+1. 有序列表项1
+2. 有序列表项2
+
+- 无序列表项A
+- 无序列表项B
+
+### 引用和代码
+
+> 这是引用块内容
+> 支持多行引用
+
+` + "```" + `go
+// 代码块示例
+func main() {
+    fmt.Println("Hello, WordZero!")
+}
+` + "```" + `
+
+---
+
+转换完成！`
+
+    // 转换为Word文档
+    doc, err := converter.ConvertString(markdownText, nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // 保存Word文档
+    err = doc.Save("markdown_example.docx")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // 文件转换
+    err = converter.ConvertFile("input.md", "output.docx", nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ## 文档和示例
 
 ### 📚 完整文档
@@ -148,6 +217,7 @@ doc.Save("sales_report.docx")
 - `examples/advanced_features/` - 高级功能综合演示
 - `examples/template_demo/` - 模板功能演示
 - `examples/template_inheritance_demo/` - 模板继承功能演示 ✨ **新增**
+- `examples/markdown_conversion/` - Markdown转Word功能演示 ✨ **新增**
 
 运行示例：
 ```bash
@@ -162,6 +232,9 @@ go run ./examples/table/
 
 # 运行模板继承演示
 go run ./examples/template_inheritance_demo/
+
+# 运行Markdown转Word演示
+go run ./examples/markdown_conversion/
 ```
 
 ## 主要功能
@@ -175,6 +248,7 @@ go run ./examples/template_inheritance_demo/
 - **页面设置**: 页面尺寸、边距、页眉页脚等
 - **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎（含模板继承）
 - **图片功能**: 图片插入、大小调整、位置设置
+- **Markdown转Word**: 基于goldmark的高质量Markdown到Word转换 ✨ **新增**
 
 ### 🚧 规划中功能
 - 表格排序和高级操作

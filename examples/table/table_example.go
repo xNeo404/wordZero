@@ -39,7 +39,7 @@ func main() {
 	demonstrateTableDeletion(doc)
 
 	// 保存文档
-	outputFile := "../output/table_demo.docx"
+	outputFile := "examples/output/table_demo.docx"
 	err := doc.Save(outputFile)
 	if err != nil {
 		log.Fatalf("保存文档失败: %v", err)

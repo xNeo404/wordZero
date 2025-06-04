@@ -747,4 +747,239 @@ doc.Save("example.docx")
 10. 图片支持PNG、JPEG、GIF格式，会自动嵌入到文档中
 11. 图片尺寸可以用毫米或像素指定，支持保持长宽比的缩放
 12. 图片位置支持嵌入式、左浮动、右浮动等多种布局方式
-13. 图片对齐功能仅适用于嵌入式图片（ImagePositionInline），浮动图片请使用位置控制 
+13. 图片对齐功能仅适用于嵌入式图片（ImagePositionInline），浮动图片请使用位置控制
+
+## Markdown转Word功能 ✨ **新增功能**
+
+WordZero现在支持将Markdown文档转换为Word格式，基于goldmark解析引擎实现，提供高质量的转换效果。
+
+### Markdown包API
+
+#### 转换器接口
+- [`NewConverter(options *ConvertOptions)`](../markdown/converter.go) - 创建新的Markdown转换器
+- [`DefaultOptions()`](../markdown/config.go) - 获取默认转换选项
+- [`HighQualityOptions()`](../markdown/config.go) - 获取高质量转换选项
+
+#### 转换方法
+- [`ConvertString(content string, options *ConvertOptions)`](../markdown/converter.go) - 转换Markdown字符串为Word文档
+- [`ConvertBytes(content []byte, options *ConvertOptions)`](../markdown/converter.go) - 转换Markdown字节数组为Word文档
+- [`ConvertFile(mdPath, docxPath string, options *ConvertOptions)`](../markdown/converter.go) - 转换Markdown文件为Word文件
+- [`BatchConvert(inputs []string, outputDir string, options *ConvertOptions)`](../markdown/converter.go) - 批量转换Markdown文件
+
+#### 配置选项 (`ConvertOptions`)
+- `EnableGFM` - 启用GitHub Flavored Markdown支持
+- `EnableFootnotes` - 启用脚注支持
+- `EnableTables` - 启用表格支持
+- `EnableTaskList` - 启用任务列表支持
+- `StyleMapping` - 自定义样式映射
+- `DefaultFontFamily` - 默认字体族
+- `DefaultFontSize` - 默认字体大小
+- `ImageBasePath` - 图片基础路径
+- `EmbedImages` - 是否嵌入图片
+- `MaxImageWidth` - 最大图片宽度（英寸）
+- `PreserveLinkStyle` - 保留链接样式
+- `ConvertToBookmarks` - 内部链接转书签
+- `GenerateTOC` - 生成目录
+- `TOCMaxLevel` - 目录最大级别
+- `PageSettings` - 页面设置
+- `StrictMode` - 严格模式
+- `IgnoreErrors` - 忽略转换错误
+- `ErrorCallback` - 错误回调函数
+- `ProgressCallback` - 进度回调函数
+
+### 支持的Markdown语法
+
+#### 基础语法
+- **标题** (`# ## ### #### ##### ######`) - 转换为Word标题样式1-6
+- **段落** - 转换为Word正文段落
+- **粗体** (`**文本**`) - 转换为粗体格式
+- **斜体** (`*文本*`) - 转换为斜体格式
+- **行内代码** (`` `代码` ``) - 转换为等宽字体
+- **代码块** (``` ```) - 转换为代码块样式
+
+#### 列表支持
+- **无序列表** (`- * +`) - 转换为Word项目符号列表
+- **有序列表** (`1. 2. 3.`) - 转换为Word编号列表
+- **多级列表** - 支持嵌套列表结构
+
+#### GitHub Flavored Markdown扩展 ✨ **新增**
+- **表格** (`| 列1 | 列2 |`) - 转换为Word表格
+  - 支持表头自动识别和样式设置
+  - 支持对齐控制（左对齐 `:---`、居中 `:---:`、右对齐 `---:`）
+  - 自动设置表格边框和单元格格式
+- **任务列表** (`- [x] 已完成` / `- [ ] 未完成`) - 转换为复选框符号
+  - ☑ 表示已完成任务
+  - ☐ 表示未完成任务
+  - 支持嵌套任务列表
+  - 支持混合格式（粗体、斜体、代码等）
+
+#### 其他元素
+- **引用块** (`> 引用文本`) - 转换为斜体引用样式
+- **分割线** (`---`) - 转换为水平线
+- **链接** (`[文本](URL)`) - 转换为蓝色文本（后续支持超链接）
+- **图片** (`![alt](src)`) - 转换为图片占位符（后续支持图片嵌入）
+
+### 使用示例
+
+#### 基础字符串转换
+```go
+import "github.com/ZeroHawkeye/wordZero/pkg/markdown"
+
+// 创建转换器
+converter := markdown.NewConverter(markdown.DefaultOptions())
+
+// 转换Markdown字符串
+markdownText := `# 标题
+
+这是一个包含**粗体**和*斜体*的段落。
+
+## 子标题
+
+- 列表项1
+- 列表项2
+
+> 引用文本
+
+` + "`" + `代码示例` + "`" + `
+`
+
+doc, err := converter.ConvertString(markdownText, nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+// 保存Word文档
+err = doc.Save("output.docx")
+```
+
+#### 表格和任务列表示例 ✨ **新增**
+```go
+// 启用表格和任务列表功能
+options := markdown.DefaultOptions()
+options.EnableTables = true
+options.EnableTaskList = true
+
+converter := markdown.NewConverter(options)
+
+// 包含表格和任务列表的Markdown
+markdownWithTable := `# 项目进度表
+
+## 功能实现状态
+
+| 功能名称 | 状态 | 负责人 |
+|:---------|:----:|-------:|
+| 表格转换 | ✅ | 张三 |
+| 任务列表 | ✅ | 李四 |
+| 图片处理 | 🚧 | 王五 |
+
+## 待办事项
+
+- [x] 实现表格转换功能
+  - [x] 基础表格支持
+  - [x] 对齐方式处理
+  - [x] 表头样式设置
+- [ ] 完善任务列表功能
+  - [x] 复选框显示
+  - [ ] 交互功能
+- [ ] 图片嵌入支持
+  - [ ] PNG格式
+  - [ ] JPEG格式
+
+## 备注
+
+> 表格支持**左对齐**、` + "`" + `居中对齐` + "`" + `和***右对齐***三种方式
+`
+
+doc, err := converter.ConvertString(markdownWithTable, options)
+if err != nil {
+    log.Fatal(err)
+}
+
+err = doc.Save("project_status.docx")
+```
+
+#### 高级配置示例
+```go
+// 创建高质量转换配置
+options := &markdown.ConvertOptions{
+    EnableGFM:         true,
+    EnableFootnotes:   true,
+    EnableTables:      true,
+    GenerateTOC:       true,
+    TOCMaxLevel:       3,
+    DefaultFontFamily: "Calibri",
+    DefaultFontSize:   11.0,
+    EmbedImages:       true,
+    MaxImageWidth:     6.0,
+    PageSettings: &document.PageSettings{
+        Size:        document.PageSizeA4,
+        Orientation: document.OrientationPortrait,
+        MarginTop:   25,
+        MarginRight: 20,
+        MarginBottom: 25,
+        MarginLeft:  20,
+    },
+    ProgressCallback: func(current, total int) {
+        fmt.Printf("转换进度: %d/%d\n", current, total)
+    },
+}
+
+converter := markdown.NewConverter(options)
+```
+
+#### 文件转换示例
+```go
+// 单文件转换
+err := converter.ConvertFile("input.md", "output.docx", nil)
+
+// 批量文件转换
+files := []string{"doc1.md", "doc2.md", "doc3.md"}
+err := converter.BatchConvert(files, "output/", options)
+```
+
+#### 自定义样式映射
+```go
+options := markdown.DefaultOptions()
+options.StyleMapping = map[string]string{
+    "heading1": "CustomTitle",
+    "heading2": "CustomSubtitle", 
+    "quote":    "CustomQuote",
+    "code":     "CustomCode",
+}
+
+converter := markdown.NewConverter(options)
+```
+
+### 技术特性
+
+#### 架构设计
+- **goldmark集成** - 使用高性能的goldmark解析引擎
+- **AST遍历** - 基于抽象语法树的转换处理
+- **API复用** - 充分复用现有WordZero document API
+- **向后兼容** - 不影响现有document包功能
+
+#### 性能优势  
+- **流式处理** - 支持大型文档的流式转换
+- **内存效率** - 优化的内存使用模式
+- **并发支持** - 批量转换支持并发处理
+- **错误恢复** - 智能错误处理和恢复机制
+
+#### 扩展性
+- **插件架构** - 支持自定义渲染器扩展
+- **配置驱动** - 丰富的配置选项支持不同需求
+- **样式系统** - 灵活的样式映射和自定义能力
+- **回调机制** - 进度和错误回调支持
+
+### 注意事项
+
+1. **兼容性** - 基于CommonMark 0.31.2标准，与GitHub Markdown高度兼容
+2. **图片处理** - 当前版本图片转换为占位符，完整图片支持在规划中
+3. **表格支持** ✨ **已完善** - 支持完整的GFM表格语法，包括对齐控制和表头样式
+4. **任务列表** ✨ **已实现** - 支持任务复选框，显示为Unicode符号（☑/☐）
+5. **链接处理** - 当前转换为蓝色文本，超链接功能在开发中
+6. **样式映射** - 可通过StyleMapping自定义Markdown元素到Word样式的映射
+7. **错误处理** - 建议在生产环境中启用错误回调，监控转换质量
+8. **性能考虑** - 批量转换大量文件时建议分批处理，避免内存压力
+9. **编码支持** - 完全支持UTF-8编码，包括中文等多字节字符
+10. **配置要求** - 表格和任务列表功能需要在ConvertOptions中显式启用
+11. **向后兼容** - 新功能不会影响现有的document包API，保持完全兼容 
