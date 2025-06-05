@@ -667,39 +667,19 @@ func (te *TemplateEngine) cloneDocument(source *Document) *Document {
 	// 深拷贝样式管理器，确保模板渲染时的样式与原模板一致
 	if source.styleManager != nil {
 		doc.styleManager = source.styleManager.Clone()
+		// 不再强制修改 Normal 样式的段落行距，避免覆盖模板自身的默认行距/段后设置。
+		// 如需统一行距，请在模板中显式设置，而非由代码层面硬编码。
+	}
 
-		// 特殊处理：如果克隆的样式管理器包含 Normal 样式的额外行距设置，
-		// 将其重置为无行距设置以保持与默认模板一致
-		te.adjustNormalStyleForTemplateCompatibility(doc)
+	// 复制 styles.xml 等样式相关部件，确保 docDefaults 等信息完整保留
+	if doc.parts == nil {
+		doc.parts = make(map[string][]byte)
+	}
+	if data, ok := source.parts["word/styles.xml"]; ok {
+		doc.parts["word/styles.xml"] = data
 	}
 
 	return doc
-}
-
-// adjustNormalStyleForTemplateCompatibility 调整 Normal 样式以兼容模板
-// 主要用于解决模板渲染时行距不一致的问题
-func (te *TemplateEngine) adjustNormalStyleForTemplateCompatibility(doc *Document) {
-	if doc == nil || doc.styleManager == nil {
-		return
-	}
-
-	// 获取当前的 Normal 样式
-	normalStyle := doc.styleManager.GetStyle("Normal")
-	if normalStyle != nil && normalStyle.ParagraphPr != nil && normalStyle.ParagraphPr.Spacing != nil {
-		// 移除 Normal 样式中的额外行距设置，保持与原模板一致
-		normalStyle.ParagraphPr.Spacing = nil
-
-		// 如果段落属性现在为空，则将其设为 nil
-		if normalStyle.ParagraphPr.Justification == nil &&
-			normalStyle.ParagraphPr.Spacing == nil &&
-			normalStyle.ParagraphPr.Indentation == nil &&
-			normalStyle.ParagraphPr.KeepNext == nil &&
-			normalStyle.ParagraphPr.KeepLines == nil &&
-			normalStyle.ParagraphPr.PageBreak == nil &&
-			normalStyle.ParagraphPr.OutlineLevel == nil {
-			normalStyle.ParagraphPr = nil
-		}
-	}
 }
 
 // cloneParagraph 深度复制段落

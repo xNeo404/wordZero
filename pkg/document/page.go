@@ -18,6 +18,20 @@ const (
 	OrientationLandscape PageOrientation = "landscape"
 )
 
+// DocGridType 文档网格类型
+type DocGridType string
+
+const (
+	// DocGridDefault 默认网格类型
+	DocGridDefault DocGridType = "default"
+	// DocGridLines 仅影响行间距
+	DocGridLines DocGridType = "lines"
+	// DocGridSnapToChars 文字对齐到网格
+	DocGridSnapToChars DocGridType = "snapToChars"
+	// DocGridSnapToLines 文字行对齐到网格
+	DocGridSnapToLines DocGridType = "snapToLines"
+)
+
 // PageSize 页面尺寸类型
 type PageSize string
 
@@ -53,6 +67,7 @@ type SectionProperties struct {
 	FooterReferences []*FooterReference       `xml:"w:footerReference,omitempty"`
 	TitlePage        *TitlePage               `xml:"w:titlePg,omitempty"`
 	PageNumType      *PageNumType             `xml:"w:pgNumType,omitempty"`
+	DocGrid          *DocGrid                 `xml:"w:docGrid,omitempty"`
 }
 
 // PageSizeXML 页面尺寸XML结构
@@ -107,6 +122,10 @@ type PageSettings struct {
 	FooterDistance float64
 	// 装订线宽度（毫米）
 	GutterWidth float64
+	// 文档网格设置
+	DocGridType      DocGridType // 文档网格类型
+	DocGridLinePitch int         // 行网格间距（1/20磅）
+	DocGridCharSpace int         // 字符间距
 }
 
 // 预定义页面尺寸（毫米）
@@ -124,15 +143,18 @@ var predefinedSizes = map[PageSize]struct {
 // DefaultPageSettings 返回默认页面设置（A4纵向）
 func DefaultPageSettings() *PageSettings {
 	return &PageSettings{
-		Size:           PageSizeA4,
-		Orientation:    OrientationPortrait,
-		MarginTop:      25.4, // 1英寸
-		MarginRight:    25.4, // 1英寸
-		MarginBottom:   25.4, // 1英寸
-		MarginLeft:     25.4, // 1英寸
-		HeaderDistance: 12.7, // 0.5英寸
-		FooterDistance: 12.7, // 0.5英寸
-		GutterWidth:    0,    // 无装订线
+		Size:             PageSizeA4,
+		Orientation:      OrientationPortrait,
+		MarginTop:        25.4, // 1英寸
+		MarginRight:      25.4, // 1英寸
+		MarginBottom:     25.4, // 1英寸
+		MarginLeft:       25.4, // 1英寸
+		HeaderDistance:   12.7, // 0.5英寸
+		FooterDistance:   12.7, // 0.5英寸
+		GutterWidth:      0,    // 无装订线
+		DocGridType:      DocGridLines,
+		DocGridLinePitch: 312, // 默认行网格间距
+		DocGridCharSpace: 0,
 	}
 }
 
@@ -167,6 +189,18 @@ func (d *Document) SetPageSettings(settings *PageSettings) error {
 		Header: fmt.Sprintf("%.0f", mmToTwips(settings.HeaderDistance)),
 		Footer: fmt.Sprintf("%.0f", mmToTwips(settings.FooterDistance)),
 		Gutter: fmt.Sprintf("%.0f", mmToTwips(settings.GutterWidth)),
+	}
+
+	// 设置文档网格
+	if settings.DocGridType != "" {
+		sectPr.DocGrid = &DocGrid{
+			Type:      string(settings.DocGridType),
+			LinePitch: strconv.Itoa(settings.DocGridLinePitch),
+		}
+
+		if settings.DocGridCharSpace > 0 {
+			sectPr.DocGrid.CharSpace = strconv.Itoa(settings.DocGridCharSpace)
+		}
 	}
 
 	Infof("页面设置已更新: 尺寸=%s, 方向=%s", settings.Size, settings.Orientation)
@@ -207,6 +241,21 @@ func (d *Document) GetPageSettings() *PageSettings {
 		settings.HeaderDistance = twipsToMM(parseFloat(sectPr.PageMargins.Header))
 		settings.FooterDistance = twipsToMM(parseFloat(sectPr.PageMargins.Footer))
 		settings.GutterWidth = twipsToMM(parseFloat(sectPr.PageMargins.Gutter))
+	}
+
+	// 解析文档网格设置
+	if sectPr.DocGrid != nil {
+		if sectPr.DocGrid.Type != "" {
+			settings.DocGridType = DocGridType(sectPr.DocGrid.Type)
+		}
+
+		if sectPr.DocGrid.LinePitch != "" {
+			settings.DocGridLinePitch = int(parseFloat(sectPr.DocGrid.LinePitch))
+		}
+
+		if sectPr.DocGrid.CharSpace != "" {
+			settings.DocGridCharSpace = int(parseFloat(sectPr.DocGrid.CharSpace))
+		}
 	}
 
 	return settings
@@ -395,4 +444,32 @@ func abs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+// DocGrid 文档网格设置
+type DocGrid struct {
+	XMLName   xml.Name `xml:"w:docGrid"`
+	Type      string   `xml:"w:type,attr,omitempty"`      // 网格类型
+	LinePitch string   `xml:"w:linePitch,attr,omitempty"` // 行网格间距
+	CharSpace string   `xml:"w:charSpace,attr,omitempty"` // 字符间距
+}
+
+// SetDocGrid 设置文档网格
+func (d *Document) SetDocGrid(gridType DocGridType, linePitch int, charSpace int) error {
+	if gridType == "" {
+		return WrapError("SetDocGrid", errors.New("网格类型不能为空"))
+	}
+
+	settings := d.GetPageSettings()
+	settings.DocGridType = gridType
+	settings.DocGridLinePitch = linePitch
+	settings.DocGridCharSpace = charSpace
+	return d.SetPageSettings(settings)
+}
+
+// ClearDocGrid 清除文档网格设置
+func (d *Document) ClearDocGrid() error {
+	sectPr := d.getSectionProperties()
+	sectPr.DocGrid = nil
+	return nil
 }

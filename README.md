@@ -42,7 +42,7 @@ We recommend using versioned installation:
 go get github.com/ZeroHawkeye/wordZero@latest
 
 # Install specific version
-go get github.com/ZeroHawkeye/wordZero@v0.4.0
+go get github.com/ZeroHawkeye/wordZero@v1.3.7
 ```
 
 ## Quick Start

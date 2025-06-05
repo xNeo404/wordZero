@@ -10,6 +10,7 @@ output/
 *.swp
 *.swo
 *~
+debug.go
 
 # 测试文档文件
 *.docx

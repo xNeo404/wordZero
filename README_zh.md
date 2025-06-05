@@ -42,7 +42,7 @@ go get github.com/ZeroHawkeye/wordZero
 go get github.com/ZeroHawkeye/wordZero@latest
 
 # 安装指定版本
-go get github.com/ZeroHawkeye/wordZero@v0.4.0
+go get github.com/ZeroHawkeye/wordZero@v1.3.7
 ```
 
 ## 快速开始

@@ -1762,6 +1762,21 @@ func (d *Document) parseSectionProperties(decoder *xml.Decoder, startElement xml
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
 					return nil, err
 				}
+			case "docGrid":
+				// 解析文档网格
+				docGridType := getAttributeValue(t.Attr, "type")
+				linePitch := getAttributeValue(t.Attr, "linePitch")
+				charSpace := getAttributeValue(t.Attr, "charSpace")
+				if docGridType != "" || linePitch != "" || charSpace != "" {
+					sectPr.DocGrid = &DocGrid{
+						Type:      docGridType,
+						LinePitch: linePitch,
+						CharSpace: charSpace,
+					}
+				}
+				if err := d.skipElement(decoder, t.Name.Local); err != nil {
+					return nil, err
+				}
 			default:
 				// 跳过其他节属性
 				if err := d.skipElement(decoder, t.Name.Local); err != nil {
@@ -1904,6 +1919,13 @@ func (d *Document) serializeDocumentRelationships() {
 // serializeStyles 序列化样式
 func (d *Document) serializeStyles() error {
 	Debugf("开始序列化样式")
+
+	// 如果在克隆文档时已经保留了完整的 styles.xml（含 docDefaults 等信息），
+	// 这里直接跳过重新生成，避免丢失模板原有的默认段落/字符设置。
+	if existing, ok := d.parts["word/styles.xml"]; ok && len(existing) > 0 {
+		Debugf("检测到已有 styles.xml，跳过样式重建以保留模板默认样式")
+		return nil
+	}
 
 	// 创建样式结构，包含完整的命名空间
 	type stylesXML struct {
