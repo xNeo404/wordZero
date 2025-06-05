@@ -1,49 +1,51 @@
-# WordZero - Golang Word操作库
+# WordZero - Golang Word Document Library
 
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#测试)
-[![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95)
-[![Performance](https://img.shields.io/badge/Performance-Golang%20优胜-brightgreen.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95)
+[![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#testing)
+[![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks)
+[![Performance](https://img.shields.io/badge/Performance-Golang%20Winner-brightgreen.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
 
-## 项目介绍
+**English** | [中文](README_zh.md)
 
-WordZero 是一个使用 Golang 实现的 Word 文档操作库，提供基础的文档创建、修改等操作功能。该库遵循最新的 Office Open XML (OOXML) 规范，专注于现代 Word 文档格式（.docx）的支持。
+## Project Introduction
 
-### 核心特性
+WordZero is a Golang-based Word document manipulation library that provides basic document creation and modification operations. This library follows the latest Office Open XML (OOXML) specifications and focuses on supporting modern Word document format (.docx).
 
-- 🚀 **完整的文档操作**: 创建、读取、修改 Word 文档
-- 🎨 **丰富的样式系统**: 18种预定义样式，支持自定义样式和样式继承
-- 📝 **文本格式化**: 字体、大小、颜色、粗体、斜体等完整支持
-- 📐 **段落格式**: 对齐、间距、缩进等段落属性设置
-- 🏷️ **标题导航**: 完整支持Heading1-9样式，可被Word导航窗格识别
-- 📊 **表格功能**: 完整的表格创建、编辑、样式设置和迭代器支持
-- 📄 **页面设置**: 页面尺寸、边距、页眉页脚等专业排版功能
-- 🔧 **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎等
-- 🎯 **模板继承**: 支持基础模板和块重写机制，实现模板复用和扩展
-- ⚡ **卓越性能**: 零依赖的纯Go实现，平均2.62ms处理速度，比JavaScript快3.7倍，比Python快21倍
-- 🔧 **易于使用**: 简洁的API设计，链式调用支持
+### Core Features
 
-## 安装
+- 🚀 **Complete Document Operations**: Create, read, and modify Word documents
+- 🎨 **Rich Style System**: 18 predefined styles with custom style and inheritance support
+- 📝 **Text Formatting**: Full support for fonts, sizes, colors, bold, italic, and more
+- 📐 **Paragraph Format**: Alignment, spacing, indentation, and other paragraph properties
+- 🏷️ **Heading Navigation**: Complete support for Heading1-9 styles, recognizable by Word navigation pane
+- 📊 **Table Functionality**: Complete table creation, editing, styling, and iterator support
+- 📄 **Page Settings**: Page size, margins, headers/footers, and professional layout features
+- 🔧 **Advanced Features**: Table of contents generation, footnotes/endnotes, list numbering, template engine, etc.
+- 🎯 **Template Inheritance**: Support for base templates and block override mechanisms for template reuse and extension
+- ⚡ **Excellent Performance**: Zero-dependency pure Go implementation, average 2.62ms processing speed, 3.7x faster than JavaScript, 21x faster than Python
+- 🔧 **Easy to Use**: Clean API design with fluent interface support
+
+## Installation
 
 ```bash
 go get github.com/ZeroHawkeye/wordZero
 ```
 
-### 版本说明
+### Version Notes
 
-推荐使用带版本号的安装方式：
+We recommend using versioned installation:
 
 ```bash
-# 安装最新版本
+# Install latest version
 go get github.com/ZeroHawkeye/wordZero@latest
 
-# 安装指定版本
+# Install specific version
 go get github.com/ZeroHawkeye/wordZero@v0.4.0
 ```
 
-## 快速开始
+## Quick Start
 
 ```go
 package main
@@ -55,71 +57,71 @@ import (
 )
 
 func main() {
-    // 创建新文档
+    // Create new document
     doc := document.New()
     
-    // 添加标题
-    titlePara := doc.AddParagraph("WordZero 使用示例")
+    // Add title
+    titlePara := doc.AddParagraph("WordZero Usage Example")
     titlePara.SetStyle(style.StyleHeading1)
     
-    // 添加正文段落
-    para := doc.AddParagraph("这是一个使用 WordZero 创建的文档示例。")
-    para.SetFontFamily("宋体")
+    // Add body paragraph
+    para := doc.AddParagraph("This is a document example created using WordZero.")
+    para.SetFontFamily("Arial")
     para.SetFontSize(12)
     para.SetColor("333333")
     
-    // 创建表格
+    // Create table
     tableConfig := &document.TableConfig{
         Rows:    3,
         Columns: 3,
     }
     table := doc.AddTable(tableConfig)
-    table.SetCellText(0, 0, "表头1")
-    table.SetCellText(0, 1, "表头2")
-    table.SetCellText(0, 2, "表头3")
+    table.SetCellText(0, 0, "Header1")
+    table.SetCellText(0, 1, "Header2")
+    table.SetCellText(0, 2, "Header3")
     
-    // 保存文档
+    // Save document
     if err := doc.Save("example.docx"); err != nil {
         log.Fatal(err)
     }
 }
 ```
 
-### 模板继承功能示例
+### Template Inheritance Feature Example
 
 ```go
-// 创建基础模板
+// Create base template
 engine := document.NewTemplateEngine()
-baseTemplate := `{{companyName}} 工作报告
+baseTemplate := `{{companyName}} Work Report
 
 {{#block "summary"}}
-默认摘要内容
+Default summary content
 {{/block}}
 
 {{#block "content"}}
-默认主要内容
+Default main content
 {{/block}}`
 
 engine.LoadTemplate("base_report", baseTemplate)
 
-// 创建扩展模板，重写特定块
+// Create extended template, override specific blocks
 salesTemplate := `{{extends "base_report"}}
 
 {{#block "summary"}}
-销售业绩摘要：本月达成 {{achievement}}%
+Sales Performance Summary: Achieved {{achievement}}% this month
 {{/block}}
 
 {{#block "content"}}
-销售详情：
-- 总销售额：{{totalSales}}
-- 新增客户：{{newCustomers}}
+Sales Details:
+- Total Sales: {{totalSales}}
+- New Customers: {{newCustomers}}
 {{/block}}`
 
 engine.LoadTemplate("sales_report", salesTemplate)
 
-// 渲染模板
+// Render template
 data := document.NewTemplateData()
-data.SetVariable("companyName", "WordZero科技")
+data.SetVariable("companyName", "WordZero Tech")
 data.SetVariable("achievement", "125")
 data.SetVariable("totalSales", "1,850,000")
 data.SetVariable("newCustomers", "45")
@@ -128,7 +130,7 @@ doc, _ := engine.RenderTemplateToDocument("sales_report", data)
 doc.Save("sales_report.docx")
 ```
 
-### Markdown转Word功能示例 ✨ **新增**
+### Markdown to Word Feature Example ✨ **New**
 
 ```go
 package main
@@ -139,35 +141,35 @@ import (
 )
 
 func main() {
-    // 创建Markdown转换器
+    // Create Markdown converter
     converter := markdown.NewConverter(markdown.DefaultOptions())
     
-    // Markdown内容
-    markdownText := `# WordZero Markdown转换示例
+    // Markdown content
+    markdownText := `# WordZero Markdown Conversion Example
 
-欢迎使用WordZero的**Markdown到Word**转换功能！
+Welcome to WordZero's **Markdown to Word** conversion feature!
 
-## 支持的语法
+## Supported Syntax
 
-### 文本格式
-- **粗体文本**
-- *斜体文本*
-- ` + "`行内代码`" + `
+### Text Formatting
+- **Bold text**
+- *Italic text*
+- ` + "`Inline code`" + `
 
-### 列表
-1. 有序列表项1
-2. 有序列表项2
+### Lists
+1. Ordered list item 1
+2. Ordered list item 2
 
-- 无序列表项A
-- 无序列表项B
+- Unordered list item A
+- Unordered list item B
 
-### 引用和代码
+### Quotes and Code
 
-> 这是引用块内容
-> 支持多行引用
+> This is blockquote content
+> Supporting multiple lines
 
 ` + "```" + `go
-// 代码块示例
+// Code block example
 func main() {
     fmt.Println("Hello, WordZero!")
 }
@@ -175,21 +177,21 @@ func main() {
 
 ---
 
-转换完成！`
+Conversion complete!`
 
-    // 转换为Word文档
+    // Convert to Word document
     doc, err := converter.ConvertString(markdownText, nil)
     if err != nil {
         log.Fatal(err)
     }
     
-    // 保存Word文档
+    // Save Word document
     err = doc.Save("markdown_example.docx")
     if err != nil {
         log.Fatal(err)
     }
     
-    // 文件转换
+    // File conversion
     err = converter.ConvertFile("input.md", "output.docx", nil)
     if err != nil {
         log.Fatal(err)
@@ -197,112 +199,117 @@ func main() {
 }
 ```
 
-## 文档和示例
+## Documentation and Examples
 
-### 📚 完整文档
-- [**📖 Wiki文档**](https://github.com/ZeroHawkeye/wordZero/wiki) - 完整的使用文档和API参考
-- [**🚀 快速开始**](https://github.com/ZeroHawkeye/wordZero/wiki/01-快速开始) - 新手入门指南
-- [**⚡ 功能特性详览**](https://github.com/ZeroHawkeye/wordZero/wiki/14-功能特性详览) - 所有功能的详细说明
-- [**📊 性能基准测试**](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试) - 跨语言性能对比分析
-- [**🏗️ 项目结构详解**](https://github.com/ZeroHawkeye/wordZero/wiki/15-项目结构详解) - 项目架构和代码组织
+### 📚 Complete Documentation
 
-### 💡 使用示例
-查看 `examples/` 目录下的示例代码：
+**Available in multiple languages**:
+- **English**: [📖 Wiki Documentation](https://github.com/ZeroHawkeye/wordZero/wiki/en-Home)
+- **中文**: [📖 中文文档](https://github.com/ZeroHawkeye/wordZero/wiki)
 
-- `examples/basic/` - 基础功能演示
-- `examples/style_demo/` - 样式系统演示  
-- `examples/table/` - 表格功能演示
-- `examples/formatting/` - 格式化演示
-- `examples/page_settings/` - 页面设置演示
-- `examples/advanced_features/` - 高级功能综合演示
-- `examples/template_demo/` - 模板功能演示
-- `examples/template_inheritance_demo/` - 模板继承功能演示 ✨ **新增**
-- `examples/markdown_conversion/` - Markdown转Word功能演示 ✨ **新增**
+**Key Documentation**:
+- [**🚀 Quick Start**](https://github.com/ZeroHawkeye/wordZero/wiki/en-Quick-Start) - Beginner's guide
+- [**⚡ Feature Overview**](https://github.com/ZeroHawkeye/wordZero/wiki/en-Feature-Overview) - Detailed description of all features
+- [**📊 Performance Benchmarks**](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks) - Cross-language performance comparison analysis
+- [**🏗️ Project Structure**](https://github.com/ZeroHawkeye/wordZero/wiki/en-Project-Structure) - Project architecture and code organization
 
-运行示例：
+### 💡 Usage Examples
+See example code in the `examples/` directory:
+
+- `examples/basic/` - Basic functionality demo
+- `examples/style_demo/` - Style system demo  
+- `examples/table/` - Table functionality demo
+- `examples/formatting/` - Formatting demo
+- `examples/page_settings/` - Page settings demo
+- `examples/advanced_features/` - Advanced features comprehensive demo
+- `examples/template_demo/` - Template functionality demo
+- `examples/template_inheritance_demo/` - Template inheritance feature demo ✨ **New**
+- `examples/markdown_conversion/` - Markdown to Word feature demo ✨ **New**
+
+Run examples:
 ```bash
-# 运行基础功能演示
+# Run basic functionality demo
 go run ./examples/basic/
 
-# 运行样式演示
+# Run style demo
 go run ./examples/style_demo/
 
-# 运行表格演示
+# Run table demo
 go run ./examples/table/
 
-# 运行模板继承演示
+# Run template inheritance demo
 go run ./examples/template_inheritance_demo/
 
-# 运行Markdown转Word演示
+# Run Markdown to Word demo
 go run ./examples/markdown_conversion/
 ```
 
-## 主要功能
+## Main Features
 
-### ✅ 已实现功能
-- **文档操作**: 创建、读取、保存、解析DOCX文档
-- **文本格式化**: 字体、大小、颜色、粗体、斜体等
-- **样式系统**: 18种预定义样式 + 自定义样式支持
-- **段落格式**: 对齐、间距、缩进等完整支持
-- **表格功能**: 完整的表格操作、样式设置、单元格迭代器
-- **页面设置**: 页面尺寸、边距、页眉页脚等
-- **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎（含模板继承）
-- **图片功能**: 图片插入、大小调整、位置设置
-- **Markdown转Word**: 基于goldmark的高质量Markdown到Word转换 ✨ **新增**
+### ✅ Implemented Features
+- **Document Operations**: Create, read, save, parse DOCX documents
+- **Text Formatting**: Fonts, sizes, colors, bold, italic, etc.
+- **Style System**: 18 predefined styles + custom style support
+- **Paragraph Format**: Alignment, spacing, indentation, complete support
+- **Table Functionality**: Complete table operations, styling, cell iterators
+- **Page Settings**: Page size, margins, headers/footers, etc.
+- **Advanced Features**: Table of contents generation, footnotes/endnotes, list numbering, template engine (with template inheritance)
+- **Image Features**: Image insertion, size adjustment, position setting
+- **Markdown to Word**: High-quality Markdown to Word conversion based on goldmark ✨ **New**
 
-### 🚧 规划中功能
-- 表格排序和高级操作
-- 书签和交叉引用
-- 文档批注和修订
-- 图形绘制功能
-- 多语言和国际化支持
+### 🚧 Planned Features
+- Table sorting and advanced operations
+- Bookmarks and cross-references
+- Document comments and revisions
+- Graphics drawing functionality
+- Multi-language and internationalization support
 
-👉 **查看完整功能列表**: [功能特性详览](https://github.com/ZeroHawkeye/wordZero/wiki/14-功能特性详览)
+👉 **View complete feature list**: [Feature Overview](https://github.com/ZeroHawkeye/wordZero/wiki/en-Feature-Overview)
 
-## 性能表现
+## Performance
 
-WordZero 在性能方面表现卓越，通过完整的基准测试验证：
+WordZero excels in performance, verified through comprehensive benchmarks:
 
-| 语言 | 平均执行时间 | 相对性能 |
-|------|-------------|----------|
+| Language | Average Execution Time | Relative Performance |
+|----------|----------------------|---------------------|
 | **Golang** | **2.62ms** | **1.00×** |
 | JavaScript | 9.63ms | 3.67× |
 | Python | 55.98ms | 21.37× |
 
-👉 **查看详细性能分析**: [性能基准测试](https://github.com/ZeroHawkeye/wordZero/wiki/13-性能基准测试)
+👉 **View detailed performance analysis**: [Performance Benchmarks](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks)
 
-## 项目结构
+## Project Structure
 
 ```
 wordZero/
-├── pkg/                    # 核心库代码
-│   ├── document/          # 文档操作功能
-│   └── style/             # 样式管理系统
-├── examples/              # 使用示例
-├── test/                  # 集成测试
-├── benchmark/             # 性能基准测试
-└── wordZero.wiki/         # 完整文档
+├── pkg/                    # Core library code
+│   ├── document/          # Document operation features
+│   └── style/             # Style management system
+├── examples/              # Usage examples
+├── test/                  # Integration tests
+├── benchmark/             # Performance benchmarks
+└── wordZero.wiki/         # Complete documentation
 ```
 
-👉 **查看详细结构说明**: [项目结构详解](https://github.com/ZeroHawkeye/wordZero/wiki/15-项目结构详解)
+👉 **View detailed structure description**: [Project Structure](https://github.com/ZeroHawkeye/wordZero/wiki/en-Project-Structure)
 
-## 贡献指南
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！在提交代码前请确保：
+Issues and Pull Requests are welcome! Please ensure before submitting code:
 
-1. 代码符合 Go 代码规范
-2. 添加必要的测试用例
-3. 更新相关文档
-4. 确保所有测试通过
+1. Code follows Go coding standards
+2. Add necessary test cases
+3. Update relevant documentation
+4. Ensure all tests pass
 
-## 许可证
+## License
 
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-**更多资源**:
-- 📖 [完整文档](https://github.com/ZeroHawkeye/wordZero/wiki)
-- 🔧 [API参考](https://github.com/ZeroHawkeye/wordZero/wiki/10-API参考)
-- 💡 [最佳实践](https://github.com/ZeroHawkeye/wordZero/wiki/09-最佳实践)
-- 📝 [更新日志](CHANGELOG.md)
+**More Resources**:
+- 📖 [Complete Documentation](https://github.com/ZeroHawkeye/wordZero/wiki)
+- 🔧 [API Reference](https://github.com/ZeroHawkeye/wordZero/wiki/en-API-Reference)
+- 💡 [Best Practices](https://github.com/ZeroHawkeye/wordZero/wiki/en-Best-Practices)
+- 📝 [Changelog](CHANGELOG.md)
