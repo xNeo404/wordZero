@@ -138,6 +138,79 @@ doc, _ := engine.RenderTemplateToDocument("sales_report", data)
 doc.Save("sales_report.docx")
 ```
 
+### 图片占位符模板功能示例 ✨ **新增**
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+)
+
+func main() {
+    // 创建包含图片占位符的模板
+    engine := document.NewTemplateEngine()
+    template := `公司：{{companyName}}
+
+{{#image companyLogo}}
+
+项目报告：{{projectName}}
+
+状态：{{#if isCompleted}}已完成{{else}}进行中{{/if}}
+
+{{#image statusChart}}
+
+团队成员：
+{{#each teamMembers}}
+- {{name}}：{{role}}
+{{/each}}`
+
+    engine.LoadTemplate("project_report", template)
+
+    // 准备模板数据
+    data := document.NewTemplateData()
+    data.SetVariable("companyName", "WordZero科技")
+    data.SetVariable("projectName", "文档处理系统")
+    data.SetCondition("isCompleted", true)
+    
+    // 设置团队成员列表
+    data.SetList("teamMembers", []interface{}{
+        map[string]interface{}{"name": "张三", "role": "首席开发"},
+        map[string]interface{}{"name": "李四", "role": "前端开发"},
+    })
+    
+    // 配置并设置图片
+    logoConfig := &document.ImageConfig{
+        Width:     100,
+        Height:    50,
+        Alignment: document.AlignCenter,
+    }
+    data.SetImage("companyLogo", "assets/logo.png", logoConfig)
+    
+    chartConfig := &document.ImageConfig{
+        Width:       200,
+        Height:      150,
+        Alignment:   document.AlignCenter,
+        AltText:     "项目状态图表",
+        Title:       "当前项目状态",
+    }
+    data.SetImage("statusChart", "assets/chart.png", chartConfig)
+    
+    // 渲染模板到文档
+    doc, err := engine.RenderTemplateToDocument("project_report", data)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // 保存文档
+    err = doc.Save("project_report.docx")
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ### Markdown转Word功能示例 ✨ **新增**
 
 ```go
@@ -232,6 +305,7 @@ func main() {
 - `examples/advanced_features/` - 高级功能综合演示
 - `examples/template_demo/` - 模板功能演示
 - `examples/template_inheritance_demo/` - 模板继承功能演示 ✨ **新增**
+- `examples/template_image_demo/` - 图片占位符模板演示 ✨ **新增**
 - `examples/markdown_conversion/` - Markdown转Word功能演示 ✨ **新增**
 
 运行示例：
@@ -247,6 +321,9 @@ go run ./examples/table/
 
 # 运行模板继承演示
 go run ./examples/template_inheritance_demo/
+
+# 运行图片占位符模板演示
+go run ./examples/template_image_demo/
 
 # 运行Markdown转Word演示
 go run ./examples/markdown_conversion/

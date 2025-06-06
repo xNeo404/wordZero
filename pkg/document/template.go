@@ -51,7 +51,7 @@ type Template struct {
 
 // TemplateBlock 模板块
 type TemplateBlock struct {
-	Type           string                 // 块类型：variable, if, each, inherit, block
+	Type           string                 // 块类型：variable, if, each, inherit, block, image
 	Name           string                 // 块名称（block类型使用）
 	Content        string                 // 块内容
 	Condition      string                 // 条件（if块使用）
@@ -64,9 +64,19 @@ type TemplateBlock struct {
 
 // TemplateData 模板数据
 type TemplateData struct {
-	Variables  map[string]interface{}   // 变量数据
-	Lists      map[string][]interface{} // 列表数据
-	Conditions map[string]bool          // 条件数据
+	Variables  map[string]interface{}        // 变量数据
+	Lists      map[string][]interface{}      // 列表数据
+	Conditions map[string]bool               // 条件数据
+	Images     map[string]*TemplateImageData // 图片数据
+}
+
+// TemplateImageData 模板图片数据
+type TemplateImageData struct {
+	FilePath string       // 图片文件路径
+	Data     []byte       // 图片二进制数据（优先使用）
+	Config   *ImageConfig // 图片配置（大小、位置、样式等）
+	AltText  string       // 图片替代文字
+	Title    string       // 图片标题
 }
 
 // NewTemplateEngine 创建新的模板引擎
@@ -113,8 +123,8 @@ func (te *TemplateEngine) LoadTemplateFromDocument(name string, doc *Document) (
 	te.mutex.Lock()
 	defer te.mutex.Unlock()
 
-	// 将文档内容转换为模板字符串
-	content, err := te.documentToTemplateString(doc)
+	// 从文档中提取模板内容
+	content, err := te.extractTemplateContentFromDocument(doc)
 	if err != nil {
 		return nil, WrapErrorWithContext("load_template_from_document", err, name)
 	}
@@ -247,6 +257,24 @@ func (te *TemplateEngine) parseTemplate(template *Template) error {
 		}
 	}
 
+	// 解析图片占位符: {{#image imageName}}
+	imagePattern := regexp.MustCompile(`\{\{#image\s+(\w+)\}\}`)
+	imageMatches := imagePattern.FindAllStringSubmatch(content, -1)
+	for _, match := range imageMatches {
+		if len(match) >= 2 {
+			imageName := match[1]
+
+			block := &TemplateBlock{
+				Type:     "image",
+				Name:     imageName,
+				Content:  match[0], // 保存完整的占位符文本
+				Children: make([]*TemplateBlock, 0),
+			}
+
+			template.Blocks = append(template.Blocks, block)
+		}
+	}
+
 	// 解析继承: {{extends "base_template"}}
 	extendsPattern := regexp.MustCompile(`\{\{extends\s+"([^"]+)"\}\}`)
 	extendsMatches := extendsPattern.FindStringSubmatch(content)
@@ -308,6 +336,11 @@ func (te *TemplateEngine) RenderToDocument(templateName string, data *TemplateDa
 		return nil, WrapErrorWithContext("render_to_document", err, templateName)
 	}
 
+	// 处理图片占位符
+	if err := te.processImagePlaceholders(doc, data); err != nil {
+		return nil, WrapErrorWithContext("render_to_document", err, templateName)
+	}
+
 	return doc, nil
 }
 
@@ -342,6 +375,9 @@ func (te *TemplateEngine) renderTemplate(template *Template, data *TemplateData)
 
 	// 渲染条件语句（处理非循环内的条件语句）
 	content = te.renderConditionals(content, data.Conditions)
+
+	// 渲染图片占位符
+	content = te.renderImages(content, data.Images)
 
 	return content, nil
 }
@@ -640,6 +676,30 @@ func (te *TemplateEngine) documentToTemplateString(doc *Document) (string, error
 	// 这里不再转换为纯字符串，而是保持原始文档结构
 	// 实际上我们应该直接在原文档上进行变量替换
 	return "", nil // 将在新的方法中处理
+}
+
+// extractTemplateContentFromDocument 从文档中提取模板内容
+func (te *TemplateEngine) extractTemplateContentFromDocument(doc *Document) (string, error) {
+	var contentBuilder strings.Builder
+
+	// 遍历文档元素，提取文本内容
+	for _, element := range doc.Body.Elements {
+		switch elem := element.(type) {
+		case *Paragraph:
+			// 提取段落中的文本
+			for _, run := range elem.Runs {
+				contentBuilder.WriteString(run.Text.Content)
+			}
+			contentBuilder.WriteString("\n")
+
+		case *Table:
+			// 暂时跳过表格，专注于段落中的模板语法
+			// 表格中的模板语法将在RenderTemplateToDocument中处理
+			continue
+		}
+	}
+
+	return contentBuilder.String(), nil
 }
 
 // cloneDocument 深度复制文档所有元素和属性
@@ -1477,6 +1537,12 @@ func (te *TemplateEngine) replaceVariablesInDocument(doc *Document, data *Templa
 		}
 	}
 
+	// 处理图片占位符
+	err = te.processImagePlaceholders(doc, data)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -2138,6 +2204,7 @@ func NewTemplateData() *TemplateData {
 		Variables:  make(map[string]interface{}),
 		Lists:      make(map[string][]interface{}),
 		Conditions: make(map[string]bool),
+		Images:     make(map[string]*TemplateImageData),
 	}
 }
 
@@ -2177,25 +2244,36 @@ func (td *TemplateData) GetList(name string) ([]interface{}, bool) {
 
 // GetCondition 获取条件
 func (td *TemplateData) GetCondition(name string) (bool, bool) {
-	condition, exists := td.Conditions[name]
-	return condition, exists
+	value, exists := td.Conditions[name]
+	return value, exists
+}
+
+// GetImage 获取图片数据
+func (td *TemplateData) GetImage(name string) (*TemplateImageData, bool) {
+	value, exists := td.Images[name]
+	return value, exists
 }
 
 // Merge 合并模板数据
 func (td *TemplateData) Merge(other *TemplateData) {
 	// 合并变量
-	for name, value := range other.Variables {
-		td.Variables[name] = value
+	for key, value := range other.Variables {
+		td.Variables[key] = value
 	}
 
 	// 合并列表
-	for name, list := range other.Lists {
-		td.Lists[name] = list
+	for key, value := range other.Lists {
+		td.Lists[key] = value
 	}
 
 	// 合并条件
-	for name, condition := range other.Conditions {
-		td.Conditions[name] = condition
+	for key, value := range other.Conditions {
+		td.Conditions[key] = value
+	}
+
+	// 合并图片
+	for key, value := range other.Images {
+		td.Images[key] = value
 	}
 }
 
@@ -2204,6 +2282,7 @@ func (td *TemplateData) Clear() {
 	td.Variables = make(map[string]interface{})
 	td.Lists = make(map[string][]interface{})
 	td.Conditions = make(map[string]bool)
+	td.Images = make(map[string]*TemplateImageData)
 }
 
 // FromStruct 从结构体生成模板数据
@@ -2232,4 +2311,234 @@ func (td *TemplateData) FromStruct(data interface{}) error {
 	}
 
 	return nil
+}
+
+// SetImage 设置图片数据（通过文件路径）
+func (td *TemplateData) SetImage(name, filePath string, config *ImageConfig) {
+	imageData := &TemplateImageData{
+		FilePath: filePath,
+		Config:   config,
+	}
+	td.Images[name] = imageData
+}
+
+// SetImageFromData 设置图片数据（通过二进制数据）
+func (td *TemplateData) SetImageFromData(name string, data []byte, config *ImageConfig) {
+	imageData := &TemplateImageData{
+		Data:   data,
+		Config: config,
+	}
+	td.Images[name] = imageData
+}
+
+// SetImageWithDetails 设置图片数据（完整配置）
+func (td *TemplateData) SetImageWithDetails(name, filePath string, data []byte, config *ImageConfig, altText, title string) {
+	imageData := &TemplateImageData{
+		FilePath: filePath,
+		Data:     data,
+		Config:   config,
+		AltText:  altText,
+		Title:    title,
+	}
+	td.Images[name] = imageData
+}
+
+// renderImages 渲染图片占位符
+func (te *TemplateEngine) renderImages(content string, images map[string]*TemplateImageData) string {
+	// 图片占位符模式: {{#image imageName}}
+	imagePattern := regexp.MustCompile(`\{\{#image\s+(\w+)\}\}`)
+
+	return imagePattern.ReplaceAllStringFunc(content, func(match string) string {
+		matches := imagePattern.FindStringSubmatch(match)
+		if len(matches) >= 2 {
+			imageName := matches[1]
+
+			// 查找图片数据
+			if _, exists := images[imageName]; exists {
+				// 在传统的字符串模板中，我们返回图片占位符标记
+				// 实际的图片处理将在RenderTemplateToDocument方法中完成
+				return fmt.Sprintf("[IMAGE:%s]", imageName)
+			}
+		}
+		// 如果找不到图片数据，保持原样或返回错误信息
+		return fmt.Sprintf("[IMAGE_NOT_FOUND:%s]", matches[1])
+	})
+}
+
+// processImagePlaceholders 处理文档中的图片占位符
+func (te *TemplateEngine) processImagePlaceholders(doc *Document, data *TemplateData) error {
+	// 遍历文档元素，查找并替换图片占位符
+	for i, element := range doc.Body.Elements {
+		switch elem := element.(type) {
+		case *Paragraph:
+			// 检查段落是否包含图片占位符
+			newElements, err := te.processImagePlaceholdersInParagraph(elem, data, doc)
+			if err != nil {
+				return err
+			}
+
+			// 如果有图片替换，更新文档元素
+			if len(newElements) > 1 || (len(newElements) == 1 && newElements[0] != elem) {
+				// 移除原段落，插入新元素（可能包含图片段落）
+				doc.Body.Elements = append(doc.Body.Elements[:i], append(newElements, doc.Body.Elements[i+1:]...)...)
+			}
+		}
+	}
+	return nil
+}
+
+// processImagePlaceholdersInParagraph 处理段落中的图片占位符
+func (te *TemplateEngine) processImagePlaceholdersInParagraph(para *Paragraph, data *TemplateData, doc *Document) ([]interface{}, error) {
+	// 获取段落的完整文本
+	fullText := ""
+	for _, run := range para.Runs {
+		fullText += run.Text.Content
+	}
+
+	// 检查是否包含图片占位符（支持两种格式）
+	// 1. 原始模板格式：{{#image imageName}}
+	// 2. 渲染后格式：[IMAGE:imageName]
+	originalImagePattern := regexp.MustCompile(`\{\{#image\s+(\w+)\}\}`)
+	renderedImagePattern := regexp.MustCompile(`\[IMAGE:(\w+)\]`)
+
+	originalMatches := originalImagePattern.FindAllStringSubmatch(fullText, -1)
+	renderedMatches := renderedImagePattern.FindAllStringSubmatch(fullText, -1)
+
+	// 合并两种格式的匹配结果
+	allMatches := make([][2]string, 0)
+	for _, match := range originalMatches {
+		allMatches = append(allMatches, [2]string{match[0], match[1]})
+	}
+	for _, match := range renderedMatches {
+		allMatches = append(allMatches, [2]string{match[0], match[1]})
+	}
+
+	if len(allMatches) == 0 {
+		// 没有图片占位符，返回原段落
+		return []interface{}{para}, nil
+	}
+
+	result := make([]interface{}, 0)
+	lastEnd := 0
+
+	// 处理每个图片占位符
+	for _, match := range allMatches {
+		imageName := match[1]
+		matchStart := strings.Index(fullText[lastEnd:], match[0]) + lastEnd
+		matchEnd := matchStart + len(match[0])
+
+		// 添加图片占位符前的文本（如果有）
+		if matchStart > lastEnd {
+			beforeText := fullText[lastEnd:matchStart]
+			if strings.TrimSpace(beforeText) != "" {
+				beforePara := te.createTextParagraph(beforeText, para)
+				result = append(result, beforePara)
+			}
+		}
+
+		// 创建图片段落
+		if imageData, exists := data.Images[imageName]; exists {
+			imagePara, err := te.createImageParagraph(imageData, doc)
+			if err != nil {
+				return nil, fmt.Errorf("创建图片段落失败: %v", err)
+			}
+			result = append(result, imagePara)
+		} else {
+			// 图片数据不存在，创建错误文本段落
+			errorPara := te.createTextParagraph(fmt.Sprintf("[图片未找到: %s]", imageName), para)
+			result = append(result, errorPara)
+		}
+
+		lastEnd = matchEnd
+	}
+
+	// 添加最后剩余的文本（如果有）
+	if lastEnd < len(fullText) {
+		afterText := fullText[lastEnd:]
+		if strings.TrimSpace(afterText) != "" {
+			afterPara := te.createTextParagraph(afterText, para)
+			result = append(result, afterPara)
+		}
+	}
+
+	// 如果没有任何内容，返回空段落
+	if len(result) == 0 {
+		emptyPara := te.createTextParagraph("", para)
+		result = append(result, emptyPara)
+	}
+
+	return result, nil
+}
+
+// createTextParagraph 创建文本段落（保持原段落样式）
+func (te *TemplateEngine) createTextParagraph(text string, originalPara *Paragraph) *Paragraph {
+	newPara := te.cloneParagraph(originalPara)
+
+	// 设置文本内容，保持原有样式
+	if len(newPara.Runs) > 0 {
+		newPara.Runs[0].Text.Content = text
+		newPara.Runs = newPara.Runs[:1] // 只保留第一个run
+	} else {
+		// 如果原段落没有runs，创建一个默认的
+		newPara.Runs = []Run{{
+			Text: Text{Content: text},
+		}}
+	}
+
+	return newPara
+}
+
+// createImageParagraph 创建图片段落
+func (te *TemplateEngine) createImageParagraph(imageData *TemplateImageData, doc *Document) (*Paragraph, error) {
+	// 创建图片配置
+	config := imageData.Config
+	if config == nil {
+		config = &ImageConfig{
+			Position:  ImagePositionInline,
+			Alignment: AlignCenter,
+		}
+	}
+
+	// 添加图片到文档
+	var imageInfo *ImageInfo
+	var err error
+
+	if len(imageData.Data) > 0 {
+		// 使用二进制数据
+		var format ImageFormat
+		format, err = detectImageFormat(imageData.Data)
+		if err != nil {
+			return nil, fmt.Errorf("检测图片格式失败: %v", err)
+		}
+
+		var width, height int
+		width, height, err = getImageDimensions(imageData.Data, format)
+		if err != nil {
+			return nil, fmt.Errorf("获取图片尺寸失败: %v", err)
+		}
+
+		fileName := fmt.Sprintf("image_%d.%s", len(doc.documentRelationships.Relationships)+1, string(format))
+		imageInfo, err = doc.AddImageFromData(imageData.Data, fileName, format, width, height, config)
+	} else if imageData.FilePath != "" {
+		// 使用文件路径
+		imageInfo, err = doc.AddImageFromFile(imageData.FilePath, config)
+	} else {
+		return nil, fmt.Errorf("图片数据和文件路径都为空")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("添加图片失败: %v", err)
+	}
+
+	// 设置图片描述和标题
+	if imageData.AltText != "" {
+		doc.SetImageAltText(imageInfo, imageData.AltText)
+	}
+	if imageData.Title != "" {
+		doc.SetImageTitle(imageInfo, imageData.Title)
+	}
+
+	// 创建包含图片的段落
+	imagePara := doc.createImageParagraph(imageInfo)
+	return imagePara, nil
 }

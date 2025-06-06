@@ -138,6 +138,79 @@ doc, _ := engine.RenderTemplateToDocument("sales_report", data)
 doc.Save("sales_report.docx")
 ```
 
+### Image Placeholder Template Feature Example ✨ **New**
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+)
+
+func main() {
+    // Create template with image placeholders
+    engine := document.NewTemplateEngine()
+    template := `Company: {{companyName}}
+
+{{#image companyLogo}}
+
+Project Report: {{projectName}}
+
+Status: {{#if isCompleted}}Completed{{else}}In Progress{{/if}}
+
+{{#image statusChart}}
+
+Team Members:
+{{#each teamMembers}}
+- {{name}}: {{role}}
+{{/each}}`
+
+    engine.LoadTemplate("project_report", template)
+
+    // Prepare template data
+    data := document.NewTemplateData()
+    data.SetVariable("companyName", "WordZero Tech")
+    data.SetVariable("projectName", "Document Processing System")
+    data.SetCondition("isCompleted", true)
+    
+    // Set team members list
+    data.SetList("teamMembers", []interface{}{
+        map[string]interface{}{"name": "Alice", "role": "Lead Developer"},
+        map[string]interface{}{"name": "Bob", "role": "Frontend Developer"},
+    })
+    
+    // Configure and set images
+    logoConfig := &document.ImageConfig{
+        Width:     100,
+        Height:    50,
+        Alignment: document.AlignCenter,
+    }
+    data.SetImage("companyLogo", "assets/logo.png", logoConfig)
+    
+    chartConfig := &document.ImageConfig{
+        Width:       200,
+        Height:      150,
+        Alignment:   document.AlignCenter,
+        AltText:     "Project Status Chart",
+        Title:       "Current Project Status",
+    }
+    data.SetImage("statusChart", "assets/chart.png", chartConfig)
+    
+    // Render template to document
+    doc, err := engine.RenderTemplateToDocument("project_report", data)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // Save document
+    err = doc.Save("project_report.docx")
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ### Markdown to Word Feature Example ✨ **New**
 
 ```go
@@ -232,6 +305,7 @@ See example code in the `examples/` directory:
 - `examples/advanced_features/` - Advanced features comprehensive demo
 - `examples/template_demo/` - Template functionality demo
 - `examples/template_inheritance_demo/` - Template inheritance feature demo ✨ **New**
+- `examples/template_image_demo/` - Image placeholder template demo ✨ **New**
 - `examples/markdown_conversion/` - Markdown to Word feature demo ✨ **New**
 
 Run examples:
@@ -247,6 +321,9 @@ go run ./examples/table/
 
 # Run template inheritance demo
 go run ./examples/template_inheritance_demo/
+
+# Run image placeholder template demo
+go run ./examples/template_image_demo/
 
 # Run Markdown to Word demo
 go run ./examples/markdown_conversion/

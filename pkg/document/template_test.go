@@ -439,3 +439,234 @@ func TestComplexTemplateRendering(t *testing.T) {
 		t.Error("Expected document to have content")
 	}
 }
+
+// TestImagePlaceholder 测试图片占位符功能
+func TestImagePlaceholder(t *testing.T) {
+	engine := NewTemplateEngine()
+
+	// 测试基础图片占位符解析
+	t.Run("解析图片占位符", func(t *testing.T) {
+		templateContent := `文档标题
+
+这里有一个图片：
+{{#image testImage}}
+
+更多内容...`
+
+		template, err := engine.LoadTemplate("image_test", templateContent)
+		if err != nil {
+			t.Fatalf("加载模板失败: %v", err)
+		}
+
+		// 检查是否正确解析了图片占位符
+		hasImageBlock := false
+		for _, block := range template.Blocks {
+			if block.Type == "image" && block.Name == "testImage" {
+				hasImageBlock = true
+				break
+			}
+		}
+
+		if !hasImageBlock {
+			t.Error("模板应该包含图片块")
+		}
+	})
+
+	// 测试图片占位符渲染（字符串模板）
+	t.Run("渲染图片占位符到字符串", func(t *testing.T) {
+		templateContent := `产品介绍：{{productName}}
+
+产品图片：
+{{#image productImage}}
+
+描述：{{description}}`
+
+		_, err := engine.LoadTemplate("product", templateContent)
+		if err != nil {
+			t.Fatalf("加载模板失败: %v", err)
+		}
+
+		data := NewTemplateData()
+		data.SetVariable("productName", "测试产品")
+		data.SetVariable("description", "这是一个测试产品")
+
+		// 创建图片配置
+		imageConfig := &ImageConfig{
+			Position:  ImagePositionInline,
+			Alignment: AlignCenter,
+			Size: &ImageSize{
+				Width:           100,
+				KeepAspectRatio: true,
+			},
+			AltText: "测试图片",
+			Title:   "测试产品图片",
+		}
+
+		// 设置图片数据（使用示例二进制数据）
+		imageData := createTestImageData()
+		data.SetImageFromData("productImage", imageData, imageConfig)
+
+		// 渲染模板
+		doc, err := engine.RenderToDocument("product", data)
+		if err != nil {
+			t.Fatalf("渲染模板失败: %v", err)
+		}
+
+		if doc == nil {
+			t.Error("渲染结果不应为空")
+		}
+	})
+
+	// 测试从文档模板渲染图片占位符
+	t.Run("从文档模板渲染图片占位符", func(t *testing.T) {
+		// 创建基础文档
+		baseDoc := New()
+		baseDoc.AddParagraph("报告标题：{{title}}")
+		baseDoc.AddParagraph("{{#image reportChart}}")
+		baseDoc.AddParagraph("总结：{{summary}}")
+
+		// 从文档创建模板
+		template, err := engine.LoadTemplateFromDocument("report_template", baseDoc)
+		if err != nil {
+			t.Fatalf("从文档创建模板失败: %v", err)
+		}
+
+		if len(template.Variables) == 0 {
+			t.Error("模板应该包含变量")
+		}
+
+		// 准备数据
+		data := NewTemplateData()
+		data.SetVariable("title", "月度报告")
+		data.SetVariable("summary", "数据显示增长趋势良好")
+
+		chartConfig := &ImageConfig{
+			Position:  ImagePositionInline,
+			Alignment: AlignCenter,
+			Size: &ImageSize{
+				Width: 120,
+			},
+		}
+
+		imageData := createTestImageData()
+		data.SetImageFromData("reportChart", imageData, chartConfig)
+
+		// 使用RenderTemplateToDocument方法（推荐用于文档模板）
+		doc, err := engine.RenderTemplateToDocument("report_template", data)
+		if err != nil {
+			t.Fatalf("渲染文档模板失败: %v", err)
+		}
+
+		if doc == nil {
+			t.Fatal("渲染结果不应为空")
+		}
+
+		// 检查文档中是否有元素
+		if len(doc.Body.Elements) == 0 {
+			t.Error("文档应该包含元素")
+		}
+	})
+
+	// 测试图片数据管理方法
+	t.Run("测试图片数据管理", func(t *testing.T) {
+		data := NewTemplateData()
+
+		// 测试SetImage方法
+		config := &ImageConfig{
+			Position: ImagePositionInline,
+			Size:     &ImageSize{Width: 50},
+		}
+		data.SetImage("test1", "path/to/image.jpg", config)
+
+		// 测试SetImageFromData方法
+		imageData := createTestImageData()
+		data.SetImageFromData("test2", imageData, config)
+
+		// 测试SetImageWithDetails方法
+		data.SetImageWithDetails("test3", "path/to/image2.jpg", imageData, config, "alt text", "title")
+
+		// 测试GetImage方法
+		img1, exists1 := data.GetImage("test1")
+		if !exists1 || img1.FilePath != "path/to/image.jpg" {
+			t.Error("图片1数据不正确")
+		}
+
+		img2, exists2 := data.GetImage("test2")
+		if !exists2 || len(img2.Data) == 0 {
+			t.Error("图片2数据不正确")
+		}
+
+		img3, exists3 := data.GetImage("test3")
+		if !exists3 || img3.AltText != "alt text" || img3.Title != "title" {
+			t.Error("图片3数据不正确")
+		}
+
+		// 测试不存在的图片
+		_, exists4 := data.GetImage("nonexistent")
+		if exists4 {
+			t.Error("不存在的图片不应该返回true")
+		}
+	})
+
+	// 测试图片占位符与其他模板语法的兼容性
+	t.Run("图片占位符与其他语法兼容性", func(t *testing.T) {
+		templateContent := `{{#if showImage}}
+图片标题：{{imageTitle}}
+{{#image dynamicImage}}
+{{/if}}
+
+{{#each items}}
+项目：{{name}}
+{{#image itemImage}}
+描述：{{description}}
+{{/each}}`
+
+		_, err := engine.LoadTemplate("complex", templateContent)
+		if err != nil {
+			t.Fatalf("加载复杂模板失败: %v", err)
+		}
+
+		data := NewTemplateData()
+		data.SetCondition("showImage", true)
+		data.SetVariable("imageTitle", "主要图片")
+
+		items := []interface{}{
+			map[string]interface{}{
+				"name":        "项目1",
+				"description": "项目1描述",
+			},
+		}
+		data.SetList("items", items)
+
+		config := &ImageConfig{Position: ImagePositionInline}
+		imageData := createTestImageData()
+		data.SetImageFromData("dynamicImage", imageData, config)
+		data.SetImageFromData("itemImage", imageData, config)
+
+		// 渲染不应该出错
+		doc, err := engine.RenderToDocument("complex", data)
+		if err != nil {
+			t.Fatalf("渲染复杂模板失败: %v", err)
+		}
+
+		if doc == nil {
+			t.Error("渲染结果不应为空")
+		}
+	})
+}
+
+// createTestImageData 创建测试用的图片数据
+func createTestImageData() []byte {
+	// 创建一个最小的PNG图片数据用于测试
+	return []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82,
+	}
+}
