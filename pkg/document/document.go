@@ -101,11 +101,11 @@ type ParagraphProperties struct {
 	XMLName             xml.Name             `xml:"w:pPr"`
 	ParagraphStyle      *ParagraphStyle      `xml:"w:pStyle,omitempty"`
 	NumberingProperties *NumberingProperties `xml:"w:numPr,omitempty"`
-	Spacing             *Spacing             `xml:"w:spacing,omitempty"`
-	Justification       *Justification       `xml:"w:jc,omitempty"`
-	Indentation         *Indentation         `xml:"w:ind,omitempty"`
-	Tabs                *Tabs                `xml:"w:tabs,omitempty"`
 	ParagraphBorder     *ParagraphBorder     `xml:"w:pBdr,omitempty"`
+	Tabs                *Tabs                `xml:"w:tabs,omitempty"`
+	Spacing             *Spacing             `xml:"w:spacing,omitempty"`
+	Indentation         *Indentation         `xml:"w:ind,omitempty"`
+	Justification       *Justification       `xml:"w:jc,omitempty"`
 }
 
 // ParagraphBorder 段落边框
@@ -151,19 +151,20 @@ type Run struct {
 }
 
 // RunProperties 文本属性
+// 注意：字段顺序必须符合OpenXML标准，w:rFonts必须在w:color之前
 type RunProperties struct {
 	XMLName    xml.Name    `xml:"w:rPr"`
+	FontFamily *FontFamily `xml:"w:rFonts,omitempty"`
 	Bold       *Bold       `xml:"w:b,omitempty"`
 	BoldCs     *BoldCs     `xml:"w:bCs,omitempty"`
 	Italic     *Italic     `xml:"w:i,omitempty"`
 	ItalicCs   *ItalicCs   `xml:"w:iCs,omitempty"`
 	Underline  *Underline  `xml:"w:u,omitempty"`
 	Strike     *Strike     `xml:"w:strike,omitempty"`
+	Color      *Color      `xml:"w:color,omitempty"`
 	FontSize   *FontSize   `xml:"w:sz,omitempty"`
 	FontSizeCs *FontSizeCs `xml:"w:szCs,omitempty"`
-	Color      *Color      `xml:"w:color,omitempty"`
 	Highlight  *Highlight  `xml:"w:highlight,omitempty"`
-	FontFamily *FontFamily `xml:"w:rFonts,omitempty"`
 }
 
 // Bold 粗体
@@ -600,6 +601,10 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 	runProps := &RunProperties{}
 
 	if format != nil {
+		if format.FontFamily != "" {
+			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+		}
+
 		if format.Bold {
 			runProps.Bold = &Bold{}
 		}
@@ -608,19 +613,15 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 			runProps.Italic = &Italic{}
 		}
 
-		if format.FontSize > 0 {
-			// Word中字体大小是半磅为单位，所以需要乘以2
-			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
-		}
-
 		if format.FontColor != "" {
 			// 确保颜色格式正确（移除#前缀）
 			color := strings.TrimPrefix(format.FontColor, "#")
 			runProps.Color = &Color{Val: color}
 		}
 
-		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+		if format.FontSize > 0 {
+			// Word中字体大小是半磅为单位，所以需要乘以2
+			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
 		}
 	}
 
@@ -762,6 +763,10 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 	runProps := &RunProperties{}
 
 	if format != nil {
+		if format.FontFamily != "" {
+			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+		}
+
 		if format.Bold {
 			runProps.Bold = &Bold{}
 		}
@@ -770,17 +775,13 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 			runProps.Italic = &Italic{}
 		}
 
-		if format.FontSize > 0 {
-			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
-		}
-
 		if format.FontColor != "" {
 			color := strings.TrimPrefix(format.FontColor, "#")
 			runProps.Color = &Color{Val: color}
 		}
 
-		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+		if format.FontSize > 0 {
+			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
 		}
 	}
 

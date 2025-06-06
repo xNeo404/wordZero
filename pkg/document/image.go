@@ -296,8 +296,9 @@ type PicElement struct {
 
 // NvPicPr 非可视图片属性
 type NvPicPr struct {
-	XMLName xml.Name `xml:"pic:nvPicPr"`
-	CNvPr   *CNvPr   `xml:"pic:cNvPr"`
+	XMLName  xml.Name  `xml:"pic:nvPicPr"`
+	CNvPr    *CNvPr    `xml:"pic:cNvPr"`
+	CNvPicPr *CNvPicPr `xml:"pic:cNvPicPr"`
 }
 
 // CNvPr 通用非可视属性
@@ -307,6 +308,19 @@ type CNvPr struct {
 	Name    string   `xml:"name,attr"`
 	Descr   string   `xml:"descr,attr,omitempty"`
 	Title   string   `xml:"title,attr,omitempty"`
+}
+
+// CNvPicPr 图片特定非可视属性
+type CNvPicPr struct {
+	XMLName  xml.Name  `xml:"pic:cNvPicPr"`
+	PicLocks *PicLocks `xml:"a:picLocks,omitempty"`
+}
+
+// PicLocks 图片锁定属性
+type PicLocks struct {
+	XMLName            xml.Name `xml:"a:picLocks"`
+	NoChangeAspect     string   `xml:"noChangeAspect,attr,omitempty"`
+	NoChangeArrowheads string   `xml:"noChangeArrowheads,attr,omitempty"`
 }
 
 // BlipFill 图片填充
@@ -375,25 +389,31 @@ type AvLst struct {
 
 // AddImageFromFile 从文件添加图片到文档
 func (d *Document) AddImageFromFile(filePath string, config *ImageConfig) (*ImageInfo, error) {
+	Debugf("开始添加图片文件: %s", filePath)
+
 	// 读取图片文件
 	imageData, err := os.ReadFile(filePath)
 	if err != nil {
+		Errorf("读取图片文件失败 %s: %v", filePath, err)
 		return nil, fmt.Errorf("读取图片文件失败: %v", err)
 	}
 
 	// 检测图片格式
 	format, err := detectImageFormat(imageData)
 	if err != nil {
+		Errorf("检测图片格式失败 %s: %v", filePath, err)
 		return nil, fmt.Errorf("检测图片格式失败: %v", err)
 	}
 
 	// 获取图片尺寸
 	width, height, err := getImageDimensions(imageData, format)
 	if err != nil {
+		Errorf("获取图片尺寸失败 %s: %v", filePath, err)
 		return nil, fmt.Errorf("获取图片尺寸失败: %v", err)
 	}
 
 	fileName := filepath.Base(filePath)
+	Infof("成功读取图片: %s (格式: %s, 尺寸: %dx%d, 大小: %d字节)", fileName, format, width, height, len(imageData))
 	return d.AddImageFromData(imageData, fileName, format, width, height, config)
 }
 
@@ -723,6 +743,11 @@ func (d *Document) createImageGraphic(imageInfo *ImageInfo, displayWidth, displa
 						Descr: altText,
 						Title: title,
 					},
+					CNvPicPr: &CNvPicPr{
+						PicLocks: &PicLocks{
+							NoChangeAspect: "1",
+						},
+					},
 				},
 				BlipFill: &BlipFill{
 					Blip: &Blip{
@@ -979,6 +1004,28 @@ func (d *Document) SetImageAlignment(imageInfo *ImageInfo, alignment AlignmentTy
 		imageInfo.Config = &ImageConfig{}
 	}
 
+	// 更新配置
 	imageInfo.Config.Alignment = alignment
-	return nil
+
+	// 查找包含此图片的段落并更新其对齐方式
+	for _, element := range d.Body.Elements {
+		if paragraph, ok := element.(*Paragraph); ok {
+			// 检查段落中是否包含指定的图片
+			for _, run := range paragraph.Runs {
+				if run.Drawing != nil && run.Drawing.Inline != nil {
+					// 检查docPr ID是否匹配
+					if run.Drawing.Inline.DocPr != nil && run.Drawing.Inline.DocPr.ID == imageInfo.ID {
+						// 更新段落对齐方式
+						if paragraph.Properties == nil {
+							paragraph.Properties = &ParagraphProperties{}
+						}
+						paragraph.Properties.Justification = &Justification{Val: string(alignment)}
+						return nil
+					}
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("找不到包含图片ID %s的段落", imageInfo.ID)
 }

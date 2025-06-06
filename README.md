@@ -1,11 +1,19 @@
-# WordZero - Golang Word Document Library
+<div align="center">
+  <img src="docs/logo-banner.svg" alt="WordZero Logo" width="400"/>
+  
+  <h1>WordZero - Golang Word Document Library</h1>
+</div>
 
+<div align="center">
+  
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#testing)
 [![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks)
 [![Performance](https://img.shields.io/badge/Performance-Golang%20Winner-brightgreen.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/en-Performance-Benchmarks)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
+
+</div>
 
 **English** | [中文](README_zh.md)
 
@@ -288,10 +296,28 @@ wordZero/
 ├── examples/              # Usage examples
 ├── test/                  # Integration tests
 ├── benchmark/             # Performance benchmarks
+├── docs/                  # Documentation and assets
+│   ├── logo.svg           # Main logo with performance indicators
+│   ├── logo-banner.svg    # Banner version for README headers
+│   └── logo-simple.svg    # Simplified icon version
 └── wordZero.wiki/         # Complete documentation
 ```
 
 👉 **View detailed structure description**: [Project Structure](https://github.com/ZeroHawkeye/wordZero/wiki/en-Project-Structure)
+
+### Logo and Branding
+
+The project includes multiple logo variations for different use cases:
+
+<div align="center">
+
+| Logo Type | Usage | Preview |
+|-----------|-------|---------|
+| **Banner** | README headers, documentation | <img src="docs/logo-banner.svg" alt="Banner Logo" width="200"/> |
+| **Main** | General branding | <img src="docs/logo.svg" alt="Main Logo" width="120"/> |
+| **Simple** | Icons, favicons | <img src="docs/logo-simple.svg" alt="Simple Logo" width="32"/> |
+
+</div>
 
 ## Contributing
 

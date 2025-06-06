@@ -788,7 +788,7 @@ func (d *Document) addSettingsRelationship() {
 	relationship := Relationship{
 		ID:     relationshipID,
 		Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
-		Target: "settings.xml",
+		Target: "word/settings.xml",
 	}
 	d.relationships.Relationships = append(d.relationships.Relationships, relationship)
 }

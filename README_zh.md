@@ -1,11 +1,19 @@
-# WordZero - Golang Word操作库
+<div align="center">
+  <img src="docs/logo-banner.svg" alt="WordZero Logo" width="400"/>
+  
+  <h1>WordZero - Golang Word操作库</h1>
+</div>
 
+<div align="center">
+  
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green.svg)](#测试)
 [![Benchmark](https://img.shields.io/badge/Benchmark-Go%202.62ms%20%7C%20JS%209.63ms%20%7C%20Python%2055.98ms-success.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95)
 [![Performance](https://img.shields.io/badge/Performance-Golang%20优胜-brightgreen.svg)](https://github.com/ZeroHawkeye/wordZero/wiki/13-%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ZeroHawkeye/wordZero)
+
+</div>
 
 [English](README.md) | **中文**
 
@@ -288,10 +296,28 @@ wordZero/
 ├── examples/              # 使用示例
 ├── test/                  # 集成测试
 ├── benchmark/             # 性能基准测试
+├── docs/                  # 文档和资源文件
+│   ├── logo.svg           # 主Logo带性能指标
+│   ├── logo-banner.svg    # 横幅版本用于README标题
+│   └── logo-simple.svg    # 简化图标版本
 └── wordZero.wiki/         # 完整文档
 ```
 
 👉 **查看详细结构说明**: [项目结构详解](https://github.com/ZeroHawkeye/wordZero/wiki/15-项目结构详解)
+
+### Logo设计
+
+项目包含多种Logo变体，适用于不同使用场景：
+
+<div align="center">
+
+| Logo类型 | 使用场景 | 预览 |
+|----------|----------|------|
+| **横幅版** | README标题、文档头部 | <img src="docs/logo-banner.svg" alt="横幅Logo" width="200"/> |
+| **主版本** | 通用品牌展示 | <img src="docs/logo.svg" alt="主Logo" width="120"/> |
+| **简化版** | 图标、网站标识 | <img src="docs/logo-simple.svg" alt="简化Logo" width="32"/> |
+
+</div>
 
 ## 贡献指南
 

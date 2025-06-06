@@ -183,6 +183,7 @@ WordZero 专注于现代的 Office Open XML (OOXML) 格式（.docx 文件），
 	if err != nil {
 		var docErr *document.DocumentError
 		if errors.As(err, &docErr) {
+			Errorf("文档操作失败 - 操作: %s, 错误: %v", docErr.Operation, docErr.Cause)
 			fmt.Printf("操作: %s, 错误: %v\n", docErr.Operation, docErr.Cause)
 		}
 	}

@@ -56,17 +56,18 @@ type Next struct {
 }
 
 // ParagraphProperties 段落样式属性
+// 注意：字段顺序必须符合OpenXML标准
 type ParagraphProperties struct {
 	XMLName         xml.Name         `xml:"w:pPr"`
-	Spacing         *Spacing         `xml:"w:spacing,omitempty"`
-	Justification   *Justification   `xml:"w:jc,omitempty"`
-	Indentation     *Indentation     `xml:"w:ind,omitempty"`
 	KeepNext        *KeepNext        `xml:"w:keepNext,omitempty"`
 	KeepLines       *KeepLines       `xml:"w:keepLines,omitempty"`
 	PageBreak       *PageBreak       `xml:"w:pageBreakBefore,omitempty"`
-	OutlineLevel    *OutlineLevel    `xml:"w:outlineLvl,omitempty"`
 	ParagraphBorder *ParagraphBorder `xml:"w:pBdr,omitempty"`
 	Shading         *Shading         `xml:"w:shd,omitempty"`
+	Spacing         *Spacing         `xml:"w:spacing,omitempty"`
+	Indentation     *Indentation     `xml:"w:ind,omitempty"`
+	Justification   *Justification   `xml:"w:jc,omitempty"`
+	OutlineLevel    *OutlineLevel    `xml:"w:outlineLvl,omitempty"`
 }
 
 // ParagraphBorder 段落边框
@@ -95,15 +96,16 @@ type Shading struct {
 }
 
 // RunProperties 字符样式属性
+// 注意：字段顺序必须符合OpenXML标准，w:rFonts必须在w:color之前
 type RunProperties struct {
 	XMLName    xml.Name    `xml:"w:rPr"`
+	FontFamily *FontFamily `xml:"w:rFonts,omitempty"`
 	Bold       *Bold       `xml:"w:b,omitempty"`
 	Italic     *Italic     `xml:"w:i,omitempty"`
 	Underline  *Underline  `xml:"w:u,omitempty"`
 	Strike     *Strike     `xml:"w:strike,omitempty"`
-	FontSize   *FontSize   `xml:"w:sz,omitempty"`
 	Color      *Color      `xml:"w:color,omitempty"`
-	FontFamily *FontFamily `xml:"w:rFonts,omitempty"`
+	FontSize   *FontSize   `xml:"w:sz,omitempty"`
 	Highlight  *Highlight  `xml:"w:highlight,omitempty"`
 }
 

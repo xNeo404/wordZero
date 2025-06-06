@@ -846,6 +846,12 @@ func (t *Table) SetCellFormattedText(row, col int, text string, format *TextForm
 	if format != nil {
 		run.Properties = &RunProperties{}
 
+		if format.FontFamily != "" {
+			run.Properties.FontFamily = &FontFamily{
+				ASCII: format.FontFamily,
+			}
+		}
+
 		if format.Bold {
 			run.Properties.Bold = &Bold{}
 		}
@@ -854,21 +860,15 @@ func (t *Table) SetCellFormattedText(row, col int, text string, format *TextForm
 			run.Properties.Italic = &Italic{}
 		}
 
-		if format.FontSize > 0 {
-			run.Properties.FontSize = &FontSize{
-				Val: fmt.Sprintf("%d", format.FontSize*2),
-			}
-		}
-
 		if format.FontColor != "" {
 			run.Properties.Color = &Color{
 				Val: format.FontColor,
 			}
 		}
 
-		if format.FontFamily != "" {
-			run.Properties.FontFamily = &FontFamily{
-				ASCII: format.FontFamily,
+		if format.FontSize > 0 {
+			run.Properties.FontSize = &FontSize{
+				Val: fmt.Sprintf("%d", format.FontSize*2),
 			}
 		}
 	}
@@ -904,6 +904,12 @@ func (t *Table) AddCellFormattedText(row, col int, text string, format *TextForm
 	if format != nil {
 		run.Properties = &RunProperties{}
 
+		if format.FontFamily != "" {
+			run.Properties.FontFamily = &FontFamily{
+				ASCII: format.FontFamily,
+			}
+		}
+
 		if format.Bold {
 			run.Properties.Bold = &Bold{}
 		}
@@ -912,21 +918,15 @@ func (t *Table) AddCellFormattedText(row, col int, text string, format *TextForm
 			run.Properties.Italic = &Italic{}
 		}
 
-		if format.FontSize > 0 {
-			run.Properties.FontSize = &FontSize{
-				Val: fmt.Sprintf("%d", format.FontSize*2),
-			}
-		}
-
 		if format.FontColor != "" {
 			run.Properties.Color = &Color{
 				Val: format.FontColor,
 			}
 		}
 
-		if format.FontFamily != "" {
-			run.Properties.FontFamily = &FontFamily{
-				ASCII: format.FontFamily,
+		if format.FontSize > 0 {
+			run.Properties.FontSize = &FontSize{
+				Val: fmt.Sprintf("%d", format.FontSize*2),
 			}
 		}
 	}

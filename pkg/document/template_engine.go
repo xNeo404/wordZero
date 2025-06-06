@@ -2,7 +2,6 @@ package document
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 )
 
@@ -33,14 +32,14 @@ func (tr *TemplateRenderer) SetLogging(enabled bool) {
 // logInfo 记录信息日志
 func (tr *TemplateRenderer) logInfo(format string, args ...interface{}) {
 	if tr.logger.enabled {
-		log.Printf("[模板引擎] "+format, args...)
+		Infof("[模板引擎] "+format, args...)
 	}
 }
 
 // logError 记录错误日志
 func (tr *TemplateRenderer) logError(format string, args ...interface{}) {
 	if tr.logger.enabled {
-		log.Printf("[模板引擎-错误] "+format, args...)
+		Errorf("[模板引擎] "+format, args...)
 	}
 }
 
