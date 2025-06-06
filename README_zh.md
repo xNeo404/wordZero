@@ -35,6 +35,37 @@ WordZero 是一个使用 Golang 实现的 Word 文档操作库，提供基础的
 - ⚡ **卓越性能**: 零依赖的纯Go实现，平均2.62ms处理速度，比JavaScript快3.7倍，比Python快21倍
 - 🔧 **易于使用**: 简洁的API设计，链式调用支持
 
+## 相关推荐项目
+
+### Excel文档操作推荐 - Excelize
+
+如果您需要处理Excel文档，我们强烈推荐使用 [**Excelize**](https://github.com/qax-os/excelize) —— 最受欢迎的Go语言Excel操作库：
+
+- ⭐ **GitHub 19.2k+ 星标** - Go生态系统中最受欢迎的Excel处理库
+- 📊 **完整Excel支持** - 支持XLAM/XLSM/XLSX/XLTM/XLTX等所有现代Excel格式
+- 🎯 **功能丰富** - 图表、数据透视表、图片、流式API等完整功能
+- 🚀 **高性能** - 专为大数据集处理优化的流式读写API
+- 🔧 **易于集成** - 与WordZero完美互补，构建完整的Office文档处理解决方案
+
+**完美搭配**: WordZero负责Word文档处理，Excelize负责Excel文档处理，共同为您的Go项目提供完整的Office文档操作能力。
+
+```go
+// WordZero + Excelize 组合示例
+import (
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+    "github.com/xuri/excelize/v2"
+)
+
+// 创建Word报告
+doc := document.New()
+doc.AddParagraph("数据分析报告").SetStyle(style.StyleHeading1)
+
+// 创建Excel数据表
+xlsx := excelize.NewFile()
+xlsx.SetCellValue("Sheet1", "A1", "数据项")
+xlsx.SetCellValue("Sheet1", "B1", "数值")
+```
+
 ## 安装
 
 ```bash

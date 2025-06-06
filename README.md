@@ -35,6 +35,37 @@ WordZero is a Golang-based Word document manipulation library that provides basi
 - ⚡ **Excellent Performance**: Zero-dependency pure Go implementation, average 2.62ms processing speed, 3.7x faster than JavaScript, 21x faster than Python
 - 🔧 **Easy to Use**: Clean API design with fluent interface support
 
+## Related Recommended Projects
+
+### Excel Document Operations - Excelize
+
+If you need to work with Excel documents, we highly recommend [**Excelize**](https://github.com/qax-os/excelize) —— the most popular Go library for Excel operations:
+
+- ⭐ **19.2k+ GitHub Stars** - The most popular Excel processing library in the Go ecosystem
+- 📊 **Complete Excel Support** - Supports all modern Excel formats including XLAM/XLSM/XLSX/XLTM/XLTX
+- 🎯 **Feature Rich** - Charts, pivot tables, images, streaming APIs, and more
+- 🚀 **High Performance** - Streaming read/write APIs optimized for large datasets
+- 🔧 **Easy Integration** - Perfect complement to WordZero for complete Office document processing solutions
+
+**Perfect Combination**: WordZero handles Word documents, Excelize handles Excel documents, together providing comprehensive Office document manipulation capabilities for your Go projects.
+
+```go
+// WordZero + Excelize combination example
+import (
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+    "github.com/qax-os/excelize/v2"
+)
+
+// Create Word report
+doc := document.New()
+doc.AddParagraph("Data Analysis Report").SetStyle(style.StyleHeading1)
+
+// Create Excel data sheet
+xlsx := excelize.NewFile()
+xlsx.SetCellValue("Sheet1", "A1", "Data Item")
+xlsx.SetCellValue("Sheet1", "B1", "Value")
+```
+
 ## Installation
 
 ```bash
