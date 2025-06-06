@@ -426,10 +426,12 @@ func (d *Document) AddImageFromData(imageData []byte, fileName string, format Im
 		}
 	}
 
-	// 生成关系ID和图片ID
-	// 注意：rId1保留给styles.xml，图片从rId2开始
+	// 使用文档级别的图片ID计数器确保ID唯一性
+	imageID := d.nextImageID
+	d.nextImageID++ // 递增计数器
+
+	// 生成关系ID，注意：rId1保留给styles.xml，图片从rId2开始
 	relationID := fmt.Sprintf("rId%d", len(d.documentRelationships.Relationships)+2)
-	imageID := len(d.documentRelationships.Relationships) + 1
 
 	// 添加图片关系
 	d.documentRelationships.Relationships = append(d.documentRelationships.Relationships, Relationship{
@@ -462,6 +464,54 @@ func (d *Document) AddImageFromData(imageData []byte, fileName string, format Im
 	paragraph := d.createImageParagraph(imageInfo)
 	d.Body.AddElement(paragraph)
 
+	return imageInfo, nil
+}
+
+// AddImageFromDataWithoutElement 从数据添加图片到文档但不创建段落元素
+// 此方法供模板引擎等需要自行管理图片段落的场景使用
+func (d *Document) AddImageFromDataWithoutElement(imageData []byte, fileName string, format ImageFormat, width, height int, config *ImageConfig) (*ImageInfo, error) {
+	if d.documentRelationships == nil {
+		d.documentRelationships = &Relationships{
+			Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
+			Relationships: []Relationship{},
+		}
+	}
+
+	// 使用文档级别的图片ID计数器确保ID唯一性
+	imageID := d.nextImageID
+	d.nextImageID++ // 递增计数器
+
+	// 生成关系ID，注意：rId1保留给styles.xml，图片从rId2开始
+	relationID := fmt.Sprintf("rId%d", len(d.documentRelationships.Relationships)+2)
+
+	// 添加图片关系
+	d.documentRelationships.Relationships = append(d.documentRelationships.Relationships, Relationship{
+		ID:     relationID,
+		Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+		Target: fmt.Sprintf("media/%s", fileName),
+	})
+
+	// 存储图片数据
+	if d.parts == nil {
+		d.parts = make(map[string][]byte)
+	}
+	d.parts[fmt.Sprintf("word/media/%s", fileName)] = imageData
+
+	// 更新内容类型
+	d.addImageContentType(format)
+
+	// 创建图片信息
+	imageInfo := &ImageInfo{
+		ID:         strconv.Itoa(imageID),
+		RelationID: relationID,
+		Format:     format,
+		Width:      width,
+		Height:     height,
+		Data:       imageData,
+		Config:     config,
+	}
+
+	// 注意：这个方法不创建段落元素，由调用者负责管理
 	return imageInfo, nil
 }
 

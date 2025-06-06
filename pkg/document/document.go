@@ -29,6 +29,8 @@ type Document struct {
 	styleManager *style.StyleManager
 	// 临时存储文档部件
 	parts map[string][]byte
+	// 图片ID计数器，确保每个图片都有唯一的ID
+	nextImageID int
 }
 
 // Body 表示文档主体
@@ -351,7 +353,7 @@ type NumID struct {
 	Val     string   `xml:"w:val,attr"`
 }
 
-// New 创建一个新的空文档
+// New 创建一个新的Word文档
 func New() *Document {
 	Debugf("创建新文档")
 
@@ -361,13 +363,16 @@ func New() *Document {
 		},
 		styleManager: style.NewStyleManager(),
 		parts:        make(map[string][]byte),
+		nextImageID:  1, // 初始化图片ID计数器，从1开始
 		documentRelationships: &Relationships{
 			Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
 			Relationships: []Relationship{},
 		},
 	}
 
+	// 初始化文档结构
 	doc.initializeStructure()
+
 	return doc
 }
 
@@ -409,6 +414,7 @@ func Open(filename string) (*Document, error) {
 			Xmlns:         "http://schemas.openxmlformats.org/package/2006/relationships",
 			Relationships: []Relationship{},
 		},
+		nextImageID: 1, // 初始化图片ID计数器
 	}
 
 	// 读取所有文件部件

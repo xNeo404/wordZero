@@ -3,6 +3,8 @@ package document
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -2517,11 +2519,31 @@ func (te *TemplateEngine) createImageParagraph(imageData *TemplateImageData, doc
 			return nil, fmt.Errorf("获取图片尺寸失败: %v", err)
 		}
 
-		fileName := fmt.Sprintf("image_%d.%s", len(doc.documentRelationships.Relationships)+1, string(format))
-		imageInfo, err = doc.AddImageFromData(imageData.Data, fileName, format, width, height, config)
+		// 使用唯一的文件名，包含图片ID计数器
+		fileName := fmt.Sprintf("image_%d.%s", doc.nextImageID, string(format))
+		// 使用不创建段落元素的方法，由模板引擎自行管理段落
+		imageInfo, err = doc.AddImageFromDataWithoutElement(imageData.Data, fileName, format, width, height, config)
 	} else if imageData.FilePath != "" {
-		// 使用文件路径
-		imageInfo, err = doc.AddImageFromFile(imageData.FilePath, config)
+		// 使用文件路径，但需要先读取数据，然后使用AddImageFromDataWithoutElement
+		data, readErr := os.ReadFile(imageData.FilePath)
+		if readErr != nil {
+			return nil, fmt.Errorf("读取图片文件失败: %v", readErr)
+		}
+
+		var format ImageFormat
+		format, err = detectImageFormat(data)
+		if err != nil {
+			return nil, fmt.Errorf("检测图片格式失败: %v", err)
+		}
+
+		var width, height int
+		width, height, err = getImageDimensions(data, format)
+		if err != nil {
+			return nil, fmt.Errorf("获取图片尺寸失败: %v", err)
+		}
+
+		fileName := filepath.Base(imageData.FilePath)
+		imageInfo, err = doc.AddImageFromDataWithoutElement(data, fileName, format, width, height, config)
 	} else {
 		return nil, fmt.Errorf("图片数据和文件路径都为空")
 	}
