@@ -153,17 +153,21 @@ func (r *WordRenderer) renderInlineContent(node ast.Node, para *document.Paragra
 			text := r.extractTextContent(n)
 			// goldmark中，level=1是斜体，level=2是粗体
 			if n.Level == 2 {
+				// 使用粗体格式
 				format := &document.TextFormat{Bold: true}
 				para.AddFormattedText(text, format)
 			} else {
+				// 使用斜体格式
 				format := &document.TextFormat{Italic: true}
 				para.AddFormattedText(text, format)
 			}
 
 		case *ast.CodeSpan:
 			text := r.extractTextContent(n)
+			// 使用CodeChar样式的格式
 			format := &document.TextFormat{
 				FontFamily: "Consolas",
+				FontColor:  "D73A49", // GitHub风格的红色
 			}
 			para.AddFormattedText(text, format)
 
@@ -237,34 +241,89 @@ func (r *WordRenderer) renderListItem(node *ast.ListItem) (ast.WalkStatus, error
 func (r *WordRenderer) renderBlockquote(node *ast.Blockquote) (ast.WalkStatus, error) {
 	text := r.extractTextContent(node)
 
-	// 创建引用段落，使用斜体格式
-	format := &document.TextFormat{
-		Italic: true,
-	}
-	r.doc.AddFormattedParagraph("> "+text, format)
+	// 创建引用段落，使用Quote样式
+	para := r.doc.AddParagraph(text)
+	para.SetStyle("Quote")
 
 	return ast.WalkSkipChildren, nil
 }
 
 // renderCodeBlock 渲染代码块
 func (r *WordRenderer) renderCodeBlock(node ast.Node) (ast.WalkStatus, error) {
-	text := r.extractCodeBlockText(node)
+	// 按行处理代码块内容，保持格式化状态
+	lines := r.extractCodeBlockLines(node)
 
-	// 使用等宽字体显示代码
-	format := &document.TextFormat{
-		FontFamily: "Consolas",
-		FontSize:   10,
+	// 为每行代码创建一个段落，保持换行和缩进
+	for _, line := range lines {
+		// 处理空行
+		if strings.TrimSpace(line) == "" {
+			para := r.doc.AddParagraph(" ") // 空行用空格表示
+			para.SetStyle("CodeBlock")
+			r.applyCodeBlockFormatting(para)
+			continue
+		}
+
+		// 创建代码行段落
+		para := r.doc.AddParagraph(line)
+		para.SetStyle("CodeBlock")
+		r.applyCodeBlockFormatting(para)
 	}
-	r.doc.AddFormattedParagraph(text, format)
 
 	return ast.WalkSkipChildren, nil
 }
 
+// extractCodeBlockLines 按行提取代码块文本，保持格式
+func (r *WordRenderer) extractCodeBlockLines(node ast.Node) []string {
+	var lines []string
+
+	for i := 0; i < node.Lines().Len(); i++ {
+		line := node.Lines().At(i)
+		lineText := string(line.Value(r.source))
+		// 保持原始格式，包括空格和制表符
+		lines = append(lines, lineText)
+	}
+
+	return lines
+}
+
+// applyCodeBlockFormatting 应用代码块格式
+func (r *WordRenderer) applyCodeBlockFormatting(para *document.Paragraph) {
+	// 应用额外的代码块格式
+	if para.Properties == nil {
+		para.Properties = &document.ParagraphProperties{}
+	}
+
+	// 设置左缩进（模拟code_template中的样式）
+	para.Properties.Indentation = &document.Indentation{
+		Left: "360", // 左缩进0.25英寸，与code_template保持一致
+	}
+
+	// 设置间距（段前段后间距）
+	para.Properties.Spacing = &document.Spacing{
+		Before: "60", // 3磅段前间距（减少间距，避免代码行之间空隙太大）
+		After:  "60", // 3磅段后间距
+	}
+
+	// 设置对齐方式为左对齐
+	para.Properties.Justification = &document.Justification{
+		Val: "left",
+	}
+}
+
 // renderThematicBreak 渲染分割线
 func (r *WordRenderer) renderThematicBreak(node *ast.ThematicBreak) (ast.WalkStatus, error) {
-	// 添加分页符或水平线
-	// 这里暂时用一行横线文本来表示
-	r.doc.AddParagraph("─────────────────────────────────────")
+	// 创建一个空段落用于显示分割线
+	para := r.doc.AddParagraph("")
+
+	// 设置水平分割线样式
+	// 使用单线样式，中等粗细，黑色
+	para.SetHorizontalRule(document.BorderStyleSingle, 12, "000000")
+
+	// 设置段落间距，使分割线在视觉上更明显
+	para.SetSpacing(&document.SpacingConfig{
+		BeforePara: 6, // 段前6磅间距
+		AfterPara:  6, // 段后6磅间距
+	})
 
 	return ast.WalkSkipChildren, nil
 }
@@ -326,18 +385,6 @@ func (r *WordRenderer) extractTextContentRecursive(node ast.Node, buf *strings.B
 			r.extractTextContentRecursive(child, buf)
 		}
 	}
-}
-
-// extractCodeBlockText 提取代码块文本
-func (r *WordRenderer) extractCodeBlockText(node ast.Node) string {
-	var buf strings.Builder
-
-	for i := 0; i < node.Lines().Len(); i++ {
-		line := node.Lines().At(i)
-		buf.Write(line.Value(r.source))
-	}
-
-	return strings.TrimRight(buf.String(), "\n")
 }
 
 // cleanText 清理文本内容

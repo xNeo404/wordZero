@@ -57,14 +57,41 @@ type Next struct {
 
 // ParagraphProperties 段落样式属性
 type ParagraphProperties struct {
-	XMLName       xml.Name       `xml:"w:pPr"`
-	Spacing       *Spacing       `xml:"w:spacing,omitempty"`
-	Justification *Justification `xml:"w:jc,omitempty"`
-	Indentation   *Indentation   `xml:"w:ind,omitempty"`
-	KeepNext      *KeepNext      `xml:"w:keepNext,omitempty"`
-	KeepLines     *KeepLines     `xml:"w:keepLines,omitempty"`
-	PageBreak     *PageBreak     `xml:"w:pageBreakBefore,omitempty"`
-	OutlineLevel  *OutlineLevel  `xml:"w:outlineLvl,omitempty"`
+	XMLName         xml.Name         `xml:"w:pPr"`
+	Spacing         *Spacing         `xml:"w:spacing,omitempty"`
+	Justification   *Justification   `xml:"w:jc,omitempty"`
+	Indentation     *Indentation     `xml:"w:ind,omitempty"`
+	KeepNext        *KeepNext        `xml:"w:keepNext,omitempty"`
+	KeepLines       *KeepLines       `xml:"w:keepLines,omitempty"`
+	PageBreak       *PageBreak       `xml:"w:pageBreakBefore,omitempty"`
+	OutlineLevel    *OutlineLevel    `xml:"w:outlineLvl,omitempty"`
+	ParagraphBorder *ParagraphBorder `xml:"w:pBdr,omitempty"`
+	Shading         *Shading         `xml:"w:shd,omitempty"`
+}
+
+// ParagraphBorder 段落边框
+type ParagraphBorder struct {
+	XMLName xml.Name             `xml:"w:pBdr"`
+	Top     *ParagraphBorderLine `xml:"w:top,omitempty"`
+	Left    *ParagraphBorderLine `xml:"w:left,omitempty"`
+	Bottom  *ParagraphBorderLine `xml:"w:bottom,omitempty"`
+	Right   *ParagraphBorderLine `xml:"w:right,omitempty"`
+}
+
+// ParagraphBorderLine 段落边框线
+type ParagraphBorderLine struct {
+	XMLName xml.Name `xml:""`
+	Val     string   `xml:"w:val,attr"`
+	Color   string   `xml:"w:color,attr"`
+	Sz      string   `xml:"w:sz,attr"`
+	Space   string   `xml:"w:space,attr"`
+}
+
+// Shading 阴影/填充色
+type Shading struct {
+	XMLName xml.Name `xml:"w:shd"`
+	Fill    string   `xml:"w:fill,attr"`
+	Val     string   `xml:"w:val,attr,omitempty"`
 }
 
 // RunProperties 字符样式属性
@@ -315,7 +342,7 @@ func (sm *StyleManager) addHeadingStyles() {
 			KeepLines: &KeepLines{},
 			Spacing: &Spacing{
 				Before: "240", // 12磅段前间距
-				After:  "0",   // 0磅段后间距
+				After:  "0",   // 0磅段段后间距
 			},
 			OutlineLevel: &OutlineLevel{
 				Val: "0",
@@ -777,35 +804,11 @@ func (sm *StyleManager) addSpecialStyles() {
 		RunPr: &RunProperties{
 			Italic: &Italic{},
 			Color: &Color{
-				Val: "404040", // 深灰色
+				Val: "666666", // 中等灰色，更通用
 			},
 		},
 	}
 	sm.AddStyle(quote)
-
-	// 代码样式
-	code := &Style{
-		Type:    string(StyleTypeCharacter),
-		StyleID: "CodeChar",
-		Name: &StyleName{
-			Val: "代码字符",
-		},
-		RunPr: &RunProperties{
-			FontFamily: &FontFamily{
-				ASCII:    "Consolas",
-				EastAsia: "Consolas",
-				HAnsi:    "Consolas",
-				CS:       "Consolas",
-			},
-			FontSize: &FontSize{
-				Val: "20", // 10磅
-			},
-			Color: &Color{
-				Val: "E7484F", // 红色
-			},
-		},
-	}
-	sm.AddStyle(code)
 
 	// 代码块样式
 	codeBlock := &Style{
@@ -822,8 +825,38 @@ func (sm *StyleManager) addSpecialStyles() {
 				Left: "360", // 左缩进0.25英寸
 			},
 			Spacing: &Spacing{
-				Before: "120", // 6磅段前间距
-				After:  "120", // 6磅段后间距
+				Before: "60", // 3磅段前间距
+				After:  "60", // 3磅段后间距
+			},
+			ParagraphBorder: &ParagraphBorder{
+				Top: &ParagraphBorderLine{
+					Val:   "thick",
+					Color: "E9E7E7",
+					Sz:    "8",
+					Space: "8",
+				},
+				Left: &ParagraphBorderLine{
+					Val:   "thick",
+					Color: "E9E7E7",
+					Sz:    "8",
+					Space: "8",
+				},
+				Bottom: &ParagraphBorderLine{
+					Val:   "thick",
+					Color: "E9E7E7",
+					Sz:    "8",
+					Space: "8",
+				},
+				Right: &ParagraphBorderLine{
+					Val:   "thick",
+					Color: "E9E7E7",
+					Sz:    "8",
+					Space: "8",
+				},
+			},
+			Shading: &Shading{
+				Fill: "F6F5F5",
+				Val:  "clear",
 			},
 		},
 		RunPr: &RunProperties{
@@ -834,14 +867,32 @@ func (sm *StyleManager) addSpecialStyles() {
 				CS:       "Consolas",
 			},
 			FontSize: &FontSize{
-				Val: "20", // 10磅
-			},
-			Color: &Color{
-				Val: "000000", // 黑色
+				Val: "18", // 9磅，与code_template保持一致
 			},
 		},
 	}
 	sm.AddStyle(codeBlock)
+
+	// 代码字符样式
+	codeChar := &Style{
+		Type:    string(StyleTypeCharacter),
+		StyleID: "CodeChar",
+		Name: &StyleName{
+			Val: "代码字符",
+		},
+		RunPr: &RunProperties{
+			FontFamily: &FontFamily{
+				ASCII:    "Consolas",
+				EastAsia: "Consolas",
+				HAnsi:    "Consolas",
+				CS:       "Consolas",
+			},
+			FontSize: &FontSize{
+				Val: "18", // 9磅
+			},
+		},
+	}
+	sm.AddStyle(codeChar)
 
 	// 添加表格样式
 	sm.addTableStyles()
@@ -1076,7 +1127,7 @@ func (sm *StyleManager) GetStyleWithInheritance(styleID string) *Style {
 	return mergedStyle
 }
 
-// mergeParagraphProperties 合并段落属性
+// mergeParagraphProperties 合并段落属性，优先级：override > base
 func mergeParagraphProperties(base, override *ParagraphProperties) *ParagraphProperties {
 	if base == nil {
 		return override
@@ -1106,6 +1157,20 @@ func mergeParagraphProperties(base, override *ParagraphProperties) *ParagraphPro
 		merged.Indentation = override.Indentation
 	} else if base.Indentation != nil {
 		merged.Indentation = base.Indentation
+	}
+
+	// 合并边框
+	if override.ParagraphBorder != nil {
+		merged.ParagraphBorder = override.ParagraphBorder
+	} else if base.ParagraphBorder != nil {
+		merged.ParagraphBorder = base.ParagraphBorder
+	}
+
+	// 合并阴影
+	if override.Shading != nil {
+		merged.Shading = override.Shading
+	} else if base.Shading != nil {
+		merged.Shading = base.Shading
 	}
 
 	// 合并其他属性
@@ -1302,7 +1367,7 @@ func (sm *StyleManager) cloneStyle(source *Style) *Style {
 	return cloned
 }
 
-// cloneParagraphProperties 深拷贝段落属性
+// cloneParagraphProperties 深度复制段落属性
 func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *ParagraphProperties {
 	if source == nil {
 		return nil
@@ -1310,7 +1375,7 @@ func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *P
 
 	cloned := &ParagraphProperties{}
 
-	// 克隆间距
+	// 复制间距
 	if source.Spacing != nil {
 		cloned.Spacing = &Spacing{
 			Before:   source.Spacing.Before,
@@ -1320,12 +1385,14 @@ func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *P
 		}
 	}
 
-	// 克隆对齐方式
+	// 复制对齐方式
 	if source.Justification != nil {
-		cloned.Justification = &Justification{Val: source.Justification.Val}
+		cloned.Justification = &Justification{
+			Val: source.Justification.Val,
+		}
 	}
 
-	// 克隆缩进
+	// 复制缩进
 	if source.Indentation != nil {
 		cloned.Indentation = &Indentation{
 			FirstLine: source.Indentation.FirstLine,
@@ -1334,7 +1401,52 @@ func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *P
 		}
 	}
 
-	// 克隆保持属性
+	// 复制段落边框
+	if source.ParagraphBorder != nil {
+		cloned.ParagraphBorder = &ParagraphBorder{}
+		if source.ParagraphBorder.Top != nil {
+			cloned.ParagraphBorder.Top = &ParagraphBorderLine{
+				Val:   source.ParagraphBorder.Top.Val,
+				Color: source.ParagraphBorder.Top.Color,
+				Sz:    source.ParagraphBorder.Top.Sz,
+				Space: source.ParagraphBorder.Top.Space,
+			}
+		}
+		if source.ParagraphBorder.Left != nil {
+			cloned.ParagraphBorder.Left = &ParagraphBorderLine{
+				Val:   source.ParagraphBorder.Left.Val,
+				Color: source.ParagraphBorder.Left.Color,
+				Sz:    source.ParagraphBorder.Left.Sz,
+				Space: source.ParagraphBorder.Left.Space,
+			}
+		}
+		if source.ParagraphBorder.Bottom != nil {
+			cloned.ParagraphBorder.Bottom = &ParagraphBorderLine{
+				Val:   source.ParagraphBorder.Bottom.Val,
+				Color: source.ParagraphBorder.Bottom.Color,
+				Sz:    source.ParagraphBorder.Bottom.Sz,
+				Space: source.ParagraphBorder.Bottom.Space,
+			}
+		}
+		if source.ParagraphBorder.Right != nil {
+			cloned.ParagraphBorder.Right = &ParagraphBorderLine{
+				Val:   source.ParagraphBorder.Right.Val,
+				Color: source.ParagraphBorder.Right.Color,
+				Sz:    source.ParagraphBorder.Right.Sz,
+				Space: source.ParagraphBorder.Right.Space,
+			}
+		}
+	}
+
+	// 复制阴影
+	if source.Shading != nil {
+		cloned.Shading = &Shading{
+			Fill: source.Shading.Fill,
+			Val:  source.Shading.Val,
+		}
+	}
+
+	// 复制其他属性
 	if source.KeepNext != nil {
 		cloned.KeepNext = &KeepNext{}
 	}
@@ -1343,14 +1455,14 @@ func (sm *StyleManager) cloneParagraphProperties(source *ParagraphProperties) *P
 		cloned.KeepLines = &KeepLines{}
 	}
 
-	// 克隆分页属性
 	if source.PageBreak != nil {
 		cloned.PageBreak = &PageBreak{}
 	}
 
-	// 克隆大纲级别
 	if source.OutlineLevel != nil {
-		cloned.OutlineLevel = &OutlineLevel{Val: source.OutlineLevel.Val}
+		cloned.OutlineLevel = &OutlineLevel{
+			Val: source.OutlineLevel.Val,
+		}
 	}
 
 	return cloned

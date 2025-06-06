@@ -105,6 +105,24 @@ type ParagraphProperties struct {
 	Justification       *Justification       `xml:"w:jc,omitempty"`
 	Indentation         *Indentation         `xml:"w:ind,omitempty"`
 	Tabs                *Tabs                `xml:"w:tabs,omitempty"`
+	ParagraphBorder     *ParagraphBorder     `xml:"w:pBdr,omitempty"`
+}
+
+// ParagraphBorder 段落边框
+type ParagraphBorder struct {
+	XMLName xml.Name             `xml:"w:pBdr"`
+	Top     *ParagraphBorderLine `xml:"w:top,omitempty"`
+	Left    *ParagraphBorderLine `xml:"w:left,omitempty"`
+	Bottom  *ParagraphBorderLine `xml:"w:bottom,omitempty"`
+	Right   *ParagraphBorderLine `xml:"w:right,omitempty"`
+}
+
+// ParagraphBorderLine 段落边框线
+type ParagraphBorderLine struct {
+	Val   string `xml:"w:val,attr"`
+	Color string `xml:"w:color,attr"`
+	Sz    string `xml:"w:sz,attr"`
+	Space string `xml:"w:space,attr"`
 }
 
 // Spacing 间距设置
@@ -990,6 +1008,145 @@ func (p *Paragraph) SetIndentation(firstLineCm, leftCm, rightCm float64) {
 	}
 
 	Debugf("设置段落缩进: 首行=%.2fcm, 左=%.2fcm, 右=%.2fcm", firstLineCm, leftCm, rightCm)
+}
+
+// ParagraphBorderConfig 段落边框配置（区别于表格边框配置）
+type ParagraphBorderConfig struct {
+	Style BorderStyle // 边框样式
+	Size  int         // 边框粗细（1/8磅为单位，默认值建议12，即1.5磅）
+	Color string      // 边框颜色（十六进制，如"000000"表示黑色）
+	Space int         // 边框与文本的间距（磅，默认值建议1）
+}
+
+// SetBorder 设置段落的边框。
+//
+// 此方法用于为段落添加边框装饰，特别适用于实现Markdown分割线(---)的转换。
+//
+// 参数：
+//   - top: 上边框配置，传入nil表示不设置上边框
+//   - left: 左边框配置，传入nil表示不设置左边框
+//   - bottom: 下边框配置，传入nil表示不设置下边框
+//   - right: 右边框配置，传入nil表示不设置右边框
+//
+// 边框配置包含样式、粗细、颜色和间距等属性。
+//
+// 示例：
+//
+//	// 设置分割线效果（仅底边框）
+//	para := doc.AddParagraph("")
+//	para.SetBorder(nil, nil, &document.ParagraphBorderConfig{
+//		Style: document.BorderStyleSingle,
+//		Size:  12,   // 1.5磅粗细
+//		Color: "000000", // 黑色
+//		Space: 1,    // 1磅间距
+//	}, nil)
+//
+//	// 设置完整边框
+//	para := doc.AddParagraph("带边框的段落")
+//	borderConfig := &document.ParagraphBorderConfig{
+//		Style: document.BorderStyleDouble,
+//		Size:  8,
+//		Color: "0000FF", // 蓝色
+//		Space: 2,
+//	}
+//	para.SetBorder(borderConfig, borderConfig, borderConfig, borderConfig)
+func (p *Paragraph) SetBorder(top, left, bottom, right *ParagraphBorderConfig) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	// 如果没有任何边框配置，清除边框
+	if top == nil && left == nil && bottom == nil && right == nil {
+		p.Properties.ParagraphBorder = nil
+		return
+	}
+
+	// 创建段落边框
+	if p.Properties.ParagraphBorder == nil {
+		p.Properties.ParagraphBorder = &ParagraphBorder{}
+	}
+
+	// 设置上边框
+	if top != nil {
+		p.Properties.ParagraphBorder.Top = &ParagraphBorderLine{
+			Val:   string(top.Style),
+			Sz:    strconv.Itoa(top.Size),
+			Color: top.Color,
+			Space: strconv.Itoa(top.Space),
+		}
+	} else {
+		p.Properties.ParagraphBorder.Top = nil
+	}
+
+	// 设置左边框
+	if left != nil {
+		p.Properties.ParagraphBorder.Left = &ParagraphBorderLine{
+			Val:   string(left.Style),
+			Sz:    strconv.Itoa(left.Size),
+			Color: left.Color,
+			Space: strconv.Itoa(left.Space),
+		}
+	} else {
+		p.Properties.ParagraphBorder.Left = nil
+	}
+
+	// 设置下边框
+	if bottom != nil {
+		p.Properties.ParagraphBorder.Bottom = &ParagraphBorderLine{
+			Val:   string(bottom.Style),
+			Sz:    strconv.Itoa(bottom.Size),
+			Color: bottom.Color,
+			Space: strconv.Itoa(bottom.Space),
+		}
+	} else {
+		p.Properties.ParagraphBorder.Bottom = nil
+	}
+
+	// 设置右边框
+	if right != nil {
+		p.Properties.ParagraphBorder.Right = &ParagraphBorderLine{
+			Val:   string(right.Style),
+			Sz:    strconv.Itoa(right.Size),
+			Color: right.Color,
+			Space: strconv.Itoa(right.Space),
+		}
+	} else {
+		p.Properties.ParagraphBorder.Right = nil
+	}
+
+	Debugf("设置段落边框: 上=%v, 左=%v, 下=%v, 右=%v", top != nil, left != nil, bottom != nil, right != nil)
+}
+
+// SetHorizontalRule 设置水平分割线。
+//
+// 此方法是SetBorder的简化版本，专门用于快速创建Markdown风格的分割线效果。
+// 只在段落底部添加一条水平线，适用于Markdown中的 --- 或 *** 语法。
+//
+// 参数：
+//   - style: 边框样式，如BorderStyleSingle、BorderStyleDouble等
+//   - size: 边框粗细（1/8磅为单位，建议值12-18）
+//   - color: 边框颜色（十六进制，如"000000"）
+//
+// 示例：
+//
+//	// 创建简单分割线
+//	para := doc.AddParagraph("")
+//	para.SetHorizontalRule(document.BorderStyleSingle, 12, "000000")
+//
+//	// 创建粗双线分割线
+//	para := doc.AddParagraph("")
+//	para.SetHorizontalRule(document.BorderStyleDouble, 18, "808080")
+func (p *Paragraph) SetHorizontalRule(style BorderStyle, size int, color string) {
+	borderConfig := &ParagraphBorderConfig{
+		Style: style,
+		Size:  size,
+		Color: color,
+		Space: 1, // 默认1磅间距
+	}
+
+	p.SetBorder(nil, nil, borderConfig, nil)
+
+	Debugf("设置水平分割线: 样式=%s, 粗细=%d, 颜色=%s", style, size, color)
 }
 
 // GetStyleManager 获取文档的样式管理器。
