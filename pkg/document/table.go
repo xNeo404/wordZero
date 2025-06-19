@@ -345,8 +345,29 @@ func (t *Table) InsertRow(position int, data []string) error {
 	// 复制第一行的单元格属性作为模板
 	templateRow := t.Rows[0]
 	for i := 0; i < colCount; i++ {
+		// 深拷贝单元格属性
+		var cellProps *TableCellProperties
+		if templateRow.Cells[i].Properties != nil {
+			cellProps = &TableCellProperties{}
+			// 复制宽度
+			if templateRow.Cells[i].Properties.TableCellW != nil {
+				cellProps.TableCellW = &TableCellW{
+					W:    templateRow.Cells[i].Properties.TableCellW.W,
+					Type: templateRow.Cells[i].Properties.TableCellW.Type,
+				}
+			}
+			// 复制垂直对齐
+			if templateRow.Cells[i].Properties.VAlign != nil {
+				cellProps.VAlign = &VAlign{
+					Val: templateRow.Cells[i].Properties.VAlign.Val,
+				}
+			}
+			// 复制其他必要的属性
+			// 注意：不要复制GridSpan和VMerge，因为这些是合并相关的属性
+		}
+
 		newRow.Cells[i] = TableCell{
-			Properties: templateRow.Cells[i].Properties, // 复用属性
+			Properties: cellProps,
 			Paragraphs: []Paragraph{
 				{
 					Runs: []Run{

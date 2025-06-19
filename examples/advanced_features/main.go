@@ -180,17 +180,17 @@ func main() {
 	// 	log.Printf("设置页面边距失败: %v", err)
 	// }
 
-	// 5. 添加页眉页脚 - 暂时跳过，因为API可能尚未实现
+	// 5. 添加页眉页脚
 	fmt.Println("添加页眉页脚...")
-	// err = doc.AddHeader("高级功能演示文档", "")
-	// if err != nil {
-	// 	log.Printf("添加页眉失败: %v", err)
-	// }
+	err = doc.AddHeader(document.HeaderFooterTypeDefault, "高级功能演示文档")
+	if err != nil {
+		log.Printf("添加页眉失败: %v", err)
+	}
 
-	// err = doc.AddFooter("", "第{页码}页 共{总页数}页")
-	// if err != nil {
-	// 	log.Printf("添加页脚失败: %v", err)
-	// }
+	err = doc.AddFooterWithPageNumber(document.HeaderFooterTypeDefault, "", true)
+	if err != nil {
+		log.Printf("添加页脚失败: %v", err)
+	}
 
 	// 6. 创建演示表格
 	fmt.Println("创建演示表格...")
