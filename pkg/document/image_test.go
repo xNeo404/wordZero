@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"os"
 	"testing"
 )
 
@@ -299,6 +300,86 @@ func TestSetImageWrapText(t *testing.T) {
 	if imageInfo.Config.WrapText != ImageWrapSquare {
 		t.Error("图片文字环绕未正确设置")
 	}
+}
+
+// TestFloatingImageXMLStructure 测试浮动图片XML结构修复
+func TestFloatingImageXMLStructure(t *testing.T) {
+	doc := New()
+
+	// 创建测试图片数据
+	imageData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A} // PNG header
+
+	// 测试左浮动 + 紧密环绕
+	config := &ImageConfig{
+		Position: ImagePositionFloatLeft,
+		WrapText: ImageWrapTight,
+		Size: &ImageSize{
+			Width:  50,
+			Height: 37.5,
+		},
+		AltText: "测试图片",
+		Title:   "测试图片",
+	}
+
+	imageInfo, err := doc.AddImageFromData(imageData, "test.png", ImageFormatPNG, 100, 75, config)
+	if err != nil {
+		t.Fatalf("添加浮动图片失败: %v", err)
+	}
+
+	// 验证配置是否正确设置
+	if imageInfo.Config.Position != ImagePositionFloatLeft {
+		t.Error("图片位置未正确设置为左浮动")
+	}
+
+	if imageInfo.Config.WrapText != ImageWrapTight {
+		t.Error("图片环绕类型未正确设置为紧密环绕")
+	}
+
+	// 保存文档并检查是否成功
+	err = doc.Save("test_floating_fix.docx")
+	if err != nil {
+		t.Fatalf("保存包含修复后浮动图片的文档失败: %v", err)
+	}
+
+	// 清理测试文件
+	defer func() {
+		if err := os.Remove("test_floating_fix.docx"); err != nil {
+			t.Logf("清理测试文件失败: %v", err)
+		}
+	}()
+
+	t.Log("✓ 浮动图片XML结构修复测试通过")
+}
+
+// TestCreateDefaultWrapPolygon 测试默认环绕多边形创建
+func TestCreateDefaultWrapPolygon(t *testing.T) {
+	doc := New()
+
+	polygon := doc.createDefaultWrapPolygon()
+	if polygon == nil {
+		t.Fatal("创建默认环绕多边形失败")
+	}
+
+	if polygon.Start == nil {
+		t.Error("环绕多边形缺少起点")
+	}
+
+	if len(polygon.LineTo) == 0 {
+		t.Error("环绕多边形缺少线段")
+	}
+
+	// 验证起点坐标
+	if polygon.Start.X != "0" || polygon.Start.Y != "0" {
+		t.Error("环绕多边形起点坐标不正确")
+	}
+
+	// 验证是否形成闭合路径
+	expectedPoints := 4 // 矩形应该有4个点
+	if len(polygon.LineTo) != expectedPoints {
+		t.Errorf("期望%d个线段，实际%d个", expectedPoints, len(polygon.LineTo))
+	}
+
+	t.Log("✓ 默认环绕多边形创建测试通过")
 }
 
 func TestSetImageAltText(t *testing.T) {

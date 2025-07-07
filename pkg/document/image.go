@@ -620,6 +620,10 @@ func (d *Document) createFloatingImageDrawing(imageInfo *ImageInfo, displayWidth
 		Locked:         "0",
 		LayoutInCell:   "1",
 		AllowOverlap:   "1",
+		SimplePosition: &SimplePosition{
+			X: "0",
+			Y: "0",
+		},
 		Extent: &DrawingExtent{
 			Cx: fmt.Sprintf("%d", displayWidth),
 			Cy: fmt.Sprintf("%d", displayHeight),
@@ -751,9 +755,10 @@ func (d *Document) setFloatingImageWrap(anchor *AnchorDrawing, config *ImageConf
 			wrapText = "left"
 		}
 		anchor.WrapTight = &WrapTight{
-			WrapText: wrapText,
-			DistL:    wrapDistL,
-			DistR:    wrapDistR,
+			WrapText:    wrapText,
+			DistL:       wrapDistL,
+			DistR:       wrapDistR,
+			WrapPolygon: d.createDefaultWrapPolygon(), // 添加必需的WrapPolygon
 		}
 	case ImageWrapTopAndBottom:
 		anchor.WrapTopAndBottom = &WrapTopAndBottom{
@@ -775,6 +780,23 @@ func (d *Document) setFloatingImageWrap(anchor *AnchorDrawing, config *ImageConf
 			DistL:    wrapDistL,
 			DistR:    wrapDistR,
 		}
+	}
+}
+
+// createDefaultWrapPolygon 创建默认的环绕多边形
+// 这个方法创建一个矩形的环绕路径，符合OpenXML规范
+func (d *Document) createDefaultWrapPolygon() *WrapPolygon {
+	return &WrapPolygon{
+		Start: &PolygonStart{
+			X: "0",
+			Y: "0",
+		},
+		LineTo: []PolygonLineTo{
+			{X: "0", Y: "21600"},
+			{X: "21600", Y: "21600"},
+			{X: "21600", Y: "0"},
+			{X: "0", Y: "0"},
+		},
 	}
 }
 
