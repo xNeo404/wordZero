@@ -284,6 +284,7 @@ type TextFormat struct {
 	FontFamily string // 字体名称
 	Underline  bool   // 是否下划线
 	Strike     bool   // 删除线
+	Highlight  string //高亮颜色
 }
 
 // AlignmentType 对齐类型
@@ -610,7 +611,7 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 
 	if format != nil {
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
 		}
 
 		if format.Bold {
@@ -637,6 +638,10 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 
 		if format.Strike {
 			runProps.Strike = &Strike{} // 添加删除线
+		}
+
+		if format.Highlight != "" {
+			runProps.Highlight = &Highlight{Val: format.Highlight}
 		}
 	}
 
@@ -779,7 +784,7 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 
 	if format != nil {
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
 		}
 
 		if format.Bold {
@@ -804,6 +809,10 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 
 		if format.Strike {
 			runProps.Strike = &Strike{} // 添加删除线
+		}
+
+		if format.Highlight != "" {
+			runProps.Highlight = &Highlight{Val: format.Highlight}
 		}
 	}
 
