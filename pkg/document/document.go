@@ -798,6 +798,13 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 		if format.FontSize > 0 {
 			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
 		}
+		if format.Underline {
+			runProps.Underline = &Underline{Val: "single"} // 默认单线下划线
+		}
+
+		if format.Strike {
+			runProps.Strike = &Strike{} // 添加删除线
+		}
 	}
 
 	run := Run{
