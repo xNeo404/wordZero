@@ -627,11 +627,21 @@ func (t *Table) GetCellText(row, col int) (string, error) {
 		return "", err
 	}
 
-	if len(cell.Paragraphs) == 0 || len(cell.Paragraphs[0].Runs) == 0 {
-		return "", nil
-	}
+       if len(cell.Paragraphs) == 0 {
+	       return "", nil
+       }
 
-	return cell.Paragraphs[0].Runs[0].Text.Content, nil
+       var result string
+       for idx, para := range cell.Paragraphs {
+	       for _, run := range para.Runs {
+		       result += run.Text.Content
+	       }
+	       // 段落之间添加软换行符（除最后一个段落）
+	       if idx < len(cell.Paragraphs)-1 {
+		       result += "\n"
+	       }
+       }
+       return result, nil
 }
 
 // GetRowCount 获取表格行数

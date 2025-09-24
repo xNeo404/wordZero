@@ -381,7 +381,10 @@ func demonstrateTemplateInheritance() {
 ### 单元格操作
 - [`GetCell(row, col int)`](table.go#L502) - 获取指定单元格
 - [`SetCellText(row, col int, text string)`](table.go#L515) - 设置单元格文本
-- [`GetCellText(row, col int)`](table.go#L548) - 获取单元格文本
+- [`GetCellText(row, col int)`](table.go#L623) - 获取单元格文本（已升级：返回单元格内所有段落与 Run 的完整内容，段落之间使用 `\n` 分隔）
+    - 旧行为：仅返回第一个段落的第一个 Run 文本，导致多行/软换行内容丢失
+    - 新行为：遍历所有段落与其下所有 Run，拼接文本；空段落跳过内容但仍产生段落换行（除末尾）
+    - 注意：如果未来需要保留 Word 中 `<w:br/>`（同一段落内的手动软换行），需扩展解析逻辑；当前仅按段落分隔
 - [`SetCellFormat(row, col int, format *CellFormat)`](table.go#L691) - 设置单元格格式
 - [`GetCellFormat(row, col int)`](table.go#L1238) - 获取单元格格式
 
