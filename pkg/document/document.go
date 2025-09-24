@@ -282,6 +282,9 @@ type TextFormat struct {
 	FontSize   int    // 字体大小（磅）
 	FontColor  string // 字体颜色（十六进制，如 "FF0000" 表示红色）
 	FontFamily string // 字体名称
+	Underline  bool   // 是否下划线
+	Strike     bool   // 删除线
+	Highlight  string //高亮颜色
 }
 
 // AlignmentType 对齐类型
@@ -608,7 +611,7 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 
 	if format != nil {
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
 		}
 
 		if format.Bold {
@@ -628,6 +631,17 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 		if format.FontSize > 0 {
 			// Word中字体大小是半磅为单位，所以需要乘以2
 			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
+		}
+		if format.Underline {
+			runProps.Underline = &Underline{Val: "single"} // 默认单线下划线
+		}
+
+		if format.Strike {
+			runProps.Strike = &Strike{} // 添加删除线
+		}
+
+		if format.Highlight != "" {
+			runProps.Highlight = &Highlight{Val: format.Highlight}
 		}
 	}
 
@@ -770,7 +784,7 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 
 	if format != nil {
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{ASCII: format.FontFamily}
+			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
 		}
 
 		if format.Bold {
@@ -788,6 +802,17 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 
 		if format.FontSize > 0 {
 			runProps.FontSize = &FontSize{Val: strconv.Itoa(format.FontSize * 2)}
+		}
+		if format.Underline {
+			runProps.Underline = &Underline{Val: "single"} // 默认单线下划线
+		}
+
+		if format.Strike {
+			runProps.Strike = &Strike{} // 添加删除线
+		}
+
+		if format.Highlight != "" {
+			runProps.Highlight = &Highlight{Val: format.Highlight}
 		}
 	}
 

@@ -15,6 +15,9 @@ func main() {
 		{FontFamily: "Times New Roman", FontSize: 14, Italic: true},
 		{FontFamily: "Courier New", FontSize: 10, FontColor: "FF0000"},
 		{FontFamily: "Calibri", FontSize: 16, Bold: true, Italic: true},
+		{FontFamily: "Calibri", FontSize: 16, Underline: true},
+		{FontFamily: "Calibri", FontSize: 16, Strike: true},
+		{FontFamily: "微软雅黑", FontSize: 18, Highlight: "yellow"},
 	}
 
 	texts := []string{
@@ -22,6 +25,9 @@ func main() {
 		"这是斜体文本",
 		"这是红色文本",
 		"这是粗体斜体文本",
+		"这是下划线文本",
+		"这是删除线文本",
+		"这是高亮文本",
 	}
 
 	for i, text := range texts {
