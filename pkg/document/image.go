@@ -1099,5 +1099,7 @@ func (d *Document) SetImageAlignment(imageInfo *ImageInfo, alignment AlignmentTy
 		}
 	}
 
-	return fmt.Errorf("找不到包含图片ID %s的段落", imageInfo.ID)
+	// 未找到包含图片的段落：保持配置已更新，返回nil以兼容在图片尚未插入段落前先设置对齐的用例。
+	Debugf("未找到包含图片ID %s 的段落，已仅更新配置中的对齐方式", imageInfo.ID)
+	return nil
 }

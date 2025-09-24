@@ -281,7 +281,8 @@ type TextFormat struct {
 	Italic     bool   // 是否斜体
 	FontSize   int    // 字体大小（磅）
 	FontColor  string // 字体颜色（十六进制，如 "FF0000" 表示红色）
-	FontFamily string // 字体名称
+	FontFamily string // 字体名称（首选字段）
+	FontName   string // 字体名称别名（为兼容早期文档示例/README 中使用的 FontName）
 	Underline  bool   // 是否下划线
 	Strike     bool   // 删除线
 	Highlight  string //高亮颜色
@@ -610,8 +611,20 @@ func (d *Document) AddFormattedParagraph(text string, format *TextFormat) *Parag
 	runProps := &RunProperties{}
 
 	if format != nil {
+		// 兼容 FontFamily 与 FontName 两个字段
+		fontName := ""
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
+			fontName = format.FontFamily
+		} else if format.FontName != "" { // 向后兼容示例代码
+			fontName = format.FontName
+		}
+		if fontName != "" {
+			runProps.FontFamily = &FontFamily{ // 设置所有相关字段，保证测试与渲染一致
+				ASCII:    fontName,
+				HAnsi:    fontName,
+				EastAsia: fontName,
+				CS:       fontName,
+			}
 		}
 
 		if format.Bold {
@@ -783,8 +796,19 @@ func (p *Paragraph) AddFormattedText(text string, format *TextFormat) {
 	runProps := &RunProperties{}
 
 	if format != nil {
+		fontName := ""
 		if format.FontFamily != "" {
-			runProps.FontFamily = &FontFamily{EastAsia: format.FontFamily}
+			fontName = format.FontFamily
+		} else if format.FontName != "" { // 兼容旧示例
+			fontName = format.FontName
+		}
+		if fontName != "" {
+			runProps.FontFamily = &FontFamily{
+				ASCII:    fontName,
+				HAnsi:    fontName,
+				EastAsia: fontName,
+				CS:       fontName,
+			}
 		}
 
 		if format.Bold {

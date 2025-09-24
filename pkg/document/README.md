@@ -341,22 +341,22 @@ func demonstrateTemplateInheritance() {
 ## 段落操作方法
 
 ### 段落格式设置
-- [`SetAlignment(alignment AlignmentType)`](document.go#L521) - 设置段落对齐方式
-- [`SetSpacing(config *SpacingConfig)`](document.go#L558) - 设置段落间距
-- [`SetStyle(styleID string)`](document.go#L773) - 设置段落样式
+- [`SetAlignment(alignment AlignmentType)`](document.go) - 设置段落对齐方式
+- [`SetSpacing(config *SpacingConfig)`](document.go) - 设置段落间距
+- [`SetStyle(styleID string)`](document.go) - 设置段落样式
 
 ### 段落内容操作
-- [`AddFormattedText(text string, format *TextFormat)`](document.go#L623) - 添加格式化文本
-- [`ElementType()`](document.go#L61) - 获取段落元素类型
+- [`AddFormattedText(text string, format *TextFormat)`](document.go) - 添加格式化文本
+- [`ElementType()`](document.go) - 获取段落元素类型
 
 ## 文档主体操作方法
 
 ### 元素查询
-- [`GetParagraphs()`](document.go#L1149) - 获取所有段落
-- [`GetTables()`](document.go#L1160) - 获取所有表格
+- [`GetParagraphs()`](document.go) - 获取所有段落
+- [`GetTables()`](document.go) - 获取所有表格
 
 ### 元素添加
-- [`AddElement(element interface{})`](document.go#L1171) - 添加元素到文档主体
+- [`AddElement(element interface{})`](document.go) - 添加元素到文档主体
 
 ## 表格操作方法
 
