@@ -157,6 +157,7 @@ type TableConfig struct {
 	Width     int        // 表格总宽度（磅）
 	ColWidths []int      // 各列宽度（磅），如果为空则平均分配
 	Data      [][]string // 初始数据
+	Emphases  [][]int    //单元格的样式 1斜体 2粗体
 }
 
 // CreateTable 创建一个新表格
@@ -296,6 +297,15 @@ func (d *Document) CreateTable(config *TableConfig) *Table {
 			// 如果有初始数据，设置单元格内容
 			if config.Data != nil && i < len(config.Data) && j < len(config.Data[i]) {
 				cell.Paragraphs[0].Runs[0].Text.Content = config.Data[i][j]
+			}
+
+			if config.Emphases != nil && i < len(config.Emphases) && j < len(config.Emphases[i]) {
+				switch config.Emphases[i][j] {
+				case 1:
+					cell.Paragraphs[0].Runs[0].Properties = &RunProperties{Italic: &Italic{}}
+				case 2:
+					cell.Paragraphs[0].Runs[0].Properties = &RunProperties{Bold: &Bold{}}
+				}
 			}
 
 			row.Cells = append(row.Cells, cell)
@@ -627,21 +637,21 @@ func (t *Table) GetCellText(row, col int) (string, error) {
 		return "", err
 	}
 
-       if len(cell.Paragraphs) == 0 {
-	       return "", nil
-       }
+	if len(cell.Paragraphs) == 0 {
+		return "", nil
+	}
 
-       var result string
-       for idx, para := range cell.Paragraphs {
-	       for _, run := range para.Runs {
-		       result += run.Text.Content
-	       }
-	       // 段落之间添加软换行符（除最后一个段落）
-	       if idx < len(cell.Paragraphs)-1 {
-		       result += "\n"
-	       }
-       }
-       return result, nil
+	var result string
+	for idx, para := range cell.Paragraphs {
+		for _, run := range para.Runs {
+			result += run.Text.Content
+		}
+		// 段落之间添加软换行符（除最后一个段落）
+		if idx < len(cell.Paragraphs)-1 {
+			result += "\n"
+		}
+	}
+	return result, nil
 }
 
 // GetRowCount 获取表格行数
