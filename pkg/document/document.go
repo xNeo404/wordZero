@@ -443,6 +443,39 @@ func Open(filename string) (*Document, error) {
 	// 初始化样式管理器
 	doc.styleManager = style.NewStyleManager()
 
+	// 解析内容类型
+	if err := doc.parseContentTypes(); err != nil {
+		Debugf("解析内容类型失败，使用默认值: %v", err)
+		// 如果解析失败，使用默认值
+		doc.contentTypes = &ContentTypes{
+			Xmlns: "http://schemas.openxmlformats.org/package/2006/content-types",
+			Defaults: []Default{
+				{Extension: "rels", ContentType: "application/vnd.openxmlformats-package.relationships+xml"},
+				{Extension: "xml", ContentType: "application/xml"},
+			},
+			Overrides: []Override{
+				{PartName: "/word/document.xml", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"},
+				{PartName: "/word/styles.xml", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"},
+			},
+		}
+	}
+
+	// 解析关系
+	if err := doc.parseRelationships(); err != nil {
+		Debugf("解析关系失败，使用默认值: %v", err)
+		// 如果解析失败，使用默认值
+		doc.relationships = &Relationships{
+			Xmlns: "http://schemas.openxmlformats.org/package/2006/relationships",
+			Relationships: []Relationship{
+				{
+					ID:     "rId1",
+					Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+					Target: "word/document.xml",
+				},
+			},
+		}
+	}
+
 	// 解析主文档
 	if err := doc.parseDocument(); err != nil {
 		Errorf("解析文档失败: %s", filename)
@@ -2183,6 +2216,48 @@ func (d *Document) serializeStyles() error {
 	d.parts["word/styles.xml"] = append([]byte(xml.Header), data...)
 
 	Debugf("样式序列化完成")
+	return nil
+}
+
+// parseContentTypes 解析内容类型文件
+func (d *Document) parseContentTypes() error {
+	Debugf("开始解析内容类型文件")
+
+	// 查找内容类型文件
+	contentTypesData, ok := d.parts["[Content_Types].xml"]
+	if !ok {
+		return WrapError("parse_content_types", fmt.Errorf("内容类型文件不存在"))
+	}
+
+	// 解析XML
+	var contentTypes ContentTypes
+	if err := xml.Unmarshal(contentTypesData, &contentTypes); err != nil {
+		return WrapError("parse_content_types", err)
+	}
+
+	d.contentTypes = &contentTypes
+	Debugf("内容类型解析完成")
+	return nil
+}
+
+// parseRelationships 解析关系文件
+func (d *Document) parseRelationships() error {
+	Debugf("开始解析关系文件")
+
+	// 查找关系文件
+	relsData, ok := d.parts["_rels/.rels"]
+	if !ok {
+		return WrapError("parse_relationships", fmt.Errorf("关系文件不存在"))
+	}
+
+	// 解析XML
+	var relationships Relationships
+	if err := xml.Unmarshal(relsData, &relationships); err != nil {
+		return WrapError("parse_relationships", err)
+	}
+
+	d.relationships = &relationships
+	Debugf("关系解析完成")
 	return nil
 }
 
