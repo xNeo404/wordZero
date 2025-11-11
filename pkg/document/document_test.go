@@ -619,3 +619,37 @@ func TestMemoryUsage(t *testing.T) {
 		t.Fatalf("Failed to save large document: %v", err)
 	}
 }
+
+func TestDocumentOpenFromMemory(t *testing.T) {
+	// 先创建一个测试文档
+	originalDoc := New()
+	originalDoc.AddParagraph("第一段")
+	originalDoc.AddParagraph("第二段")
+	originalDoc.AddHeadingParagraph("标题", 1)
+
+	filename := "test_open.docx"
+	defer os.Remove(filename)
+
+	err := originalDoc.Save(filename)
+	if err != nil {
+		t.Fatalf("Failed to save test document: %v", err)
+	}
+
+	// 打开文档
+	files, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("Failed to open test document: %v", err)
+	}
+	defer files.Close()
+
+	loadedDoc, err := OpenFromMemory(files)
+	if err != nil {
+		t.Fatalf("Failed to open document: %v", err)
+	}
+
+	for _, paragraphs := range loadedDoc.Body.GetParagraphs() {
+		for _, run := range paragraphs.Runs {
+			t.Log(run.Text.Content)
+		}
+	}
+}
