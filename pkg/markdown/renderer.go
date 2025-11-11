@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -181,8 +182,10 @@ func (r *WordRenderer) renderInlineContent(node ast.Node, para *document.Paragra
 
 		case *ast.Image:
 			r.renderImageInline(n, para)
+		case *extast.Strikethrough:
 
 		default:
+			fmt.Printf("child is of unknown type: %T\n", n)
 			// 对于其他类型，尝试提取文本内容
 			text := r.extractTextContent(n)
 			if text != "" {
@@ -400,11 +403,32 @@ func (r *WordRenderer) renderTable(node *extast.Table) (ast.WalkStatus, error) {
 	// 收集表格数据
 	var tableData [][]string
 	var alignments []extast.Alignment
+	var emphases [][]int
+
+	// 遍历表头
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		if row, ok := child.(*extast.TableHeader); ok {
+			var rowData []string
+			var rowEmphasis []int
+			// 遍历表头单元格
+			for cellChild := row.FirstChild(); cellChild != nil; cellChild = cellChild.NextSibling() {
+				if cell, ok := cellChild.(*extast.TableCell); ok {
+					cellText := r.extractTextContent(cell)
+					rowData = append(rowData, cellText)
+					//表头默认粗体
+					rowEmphasis = append(rowEmphasis, 2)
+				}
+			}
+			tableData = append(tableData, rowData)
+			emphases = append(emphases, rowEmphasis)
+		}
+	}
 
 	// 遍历表格行
 	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
 		if row, ok := child.(*extast.TableRow); ok {
 			var rowData []string
+			var rowEmphasis []int
 			if len(alignments) == 0 {
 				// 从第一行获取对齐方式
 				alignments = row.Alignments
@@ -415,9 +439,12 @@ func (r *WordRenderer) renderTable(node *extast.Table) (ast.WalkStatus, error) {
 				if cell, ok := cellChild.(*extast.TableCell); ok {
 					cellText := r.extractTextContent(cell)
 					rowData = append(rowData, cellText)
+					emphasis := extractCellEmphasis(cell)
+					rowEmphasis = append(rowEmphasis, emphasis)
 				}
 			}
 			tableData = append(tableData, rowData)
+			emphases = append(emphases, rowEmphasis)
 		}
 	}
 
@@ -436,10 +463,11 @@ func (r *WordRenderer) renderTable(node *extast.Table) (ast.WalkStatus, error) {
 
 	// 创建表格配置
 	config := &document.TableConfig{
-		Rows:  len(tableData),
-		Cols:  cols,
-		Width: 9000, // 默认宽度（磅）
-		Data:  tableData,
+		Rows:     len(tableData),
+		Cols:     cols,
+		Width:    9000, // 默认宽度（磅）
+		Data:     tableData,
+		Emphases: emphases,
 	}
 
 	// 添加表格到文档
@@ -483,6 +511,27 @@ func (r *WordRenderer) renderTable(node *extast.Table) (ast.WalkStatus, error) {
 	}
 
 	return ast.WalkSkipChildren, nil
+}
+
+// 处理单元格样式
+func extractCellEmphasis(cell *extast.TableCell) int {
+	format := 0 // 0表示无格式
+	// 遍历单元格内容
+	ast.Walk(cell, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+
+		switch node := n.(type) {
+		case *ast.Emphasis:
+			// 处理强调文本（粗体或斜体）
+			format = node.Level
+		}
+
+		return ast.WalkContinue, nil
+	})
+
+	return format
 }
 
 // renderTaskCheckBox 渲染任务列表复选框 ✨ 新增功能
