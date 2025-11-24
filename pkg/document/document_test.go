@@ -361,6 +361,289 @@ func TestParagraphSetIndentation(t *testing.T) {
 	}
 }
 
+// TestParagraphSetKeepWithNext 测试段落与下一段保持在一起
+func TestParagraphSetKeepWithNext(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试保持与下一段")
+
+	// 测试启用
+	para.SetKeepWithNext(true)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.KeepNext == nil {
+		t.Fatal("KeepNext should not be nil")
+	}
+
+	if para.Properties.KeepNext.Val != "1" {
+		t.Errorf("Expected KeepNext Val to be '1', got '%s'", para.Properties.KeepNext.Val)
+	}
+
+	// 测试禁用
+	para.SetKeepWithNext(false)
+
+	if para.Properties.KeepNext != nil {
+		t.Error("KeepNext should be nil when disabled")
+	}
+}
+
+// TestParagraphSetKeepLines 测试段落行保持在一起
+func TestParagraphSetKeepLines(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试行保持")
+
+	// 测试启用
+	para.SetKeepLines(true)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.KeepLines == nil {
+		t.Fatal("KeepLines should not be nil")
+	}
+
+	if para.Properties.KeepLines.Val != "1" {
+		t.Errorf("Expected KeepLines Val to be '1', got '%s'", para.Properties.KeepLines.Val)
+	}
+
+	// 测试禁用
+	para.SetKeepLines(false)
+
+	if para.Properties.KeepLines != nil {
+		t.Error("KeepLines should be nil when disabled")
+	}
+}
+
+// TestParagraphSetPageBreakBefore 测试段前分页
+func TestParagraphSetPageBreakBefore(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试段前分页")
+
+	// 测试启用
+	para.SetPageBreakBefore(true)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.PageBreakBefore == nil {
+		t.Fatal("PageBreakBefore should not be nil")
+	}
+
+	if para.Properties.PageBreakBefore.Val != "1" {
+		t.Errorf("Expected PageBreakBefore Val to be '1', got '%s'", para.Properties.PageBreakBefore.Val)
+	}
+
+	// 测试禁用
+	para.SetPageBreakBefore(false)
+
+	if para.Properties.PageBreakBefore != nil {
+		t.Error("PageBreakBefore should be nil when disabled")
+	}
+}
+
+// TestParagraphSetWidowControl 测试孤行控制
+func TestParagraphSetWidowControl(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试孤行控制")
+
+	// 测试启用
+	para.SetWidowControl(true)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.WidowControl == nil {
+		t.Fatal("WidowControl should not be nil")
+	}
+
+	if para.Properties.WidowControl.Val != "1" {
+		t.Errorf("Expected WidowControl Val to be '1', got '%s'", para.Properties.WidowControl.Val)
+	}
+
+	// 测试禁用
+	para.SetWidowControl(false)
+
+	if para.Properties.WidowControl == nil {
+		t.Fatal("WidowControl should not be nil when set to false")
+	}
+
+	if para.Properties.WidowControl.Val != "0" {
+		t.Errorf("Expected WidowControl Val to be '0' when disabled, got '%s'", para.Properties.WidowControl.Val)
+	}
+}
+
+// TestParagraphSetOutlineLevel 测试大纲级别设置
+func TestParagraphSetOutlineLevel(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试大纲级别")
+
+	// 测试有效级别
+	para.SetOutlineLevel(0)
+
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.OutlineLevel == nil {
+		t.Fatal("OutlineLevel should not be nil")
+	}
+
+	if para.Properties.OutlineLevel.Val != "0" {
+		t.Errorf("Expected OutlineLevel Val to be '0', got '%s'", para.Properties.OutlineLevel.Val)
+	}
+
+	// 测试其他级别
+	para.SetOutlineLevel(3)
+	if para.Properties.OutlineLevel.Val != "3" {
+		t.Errorf("Expected OutlineLevel Val to be '3', got '%s'", para.Properties.OutlineLevel.Val)
+	}
+
+	// 测试边界值
+	para.SetOutlineLevel(8)
+	if para.Properties.OutlineLevel.Val != "8" {
+		t.Errorf("Expected OutlineLevel Val to be '8', got '%s'", para.Properties.OutlineLevel.Val)
+	}
+
+	// 测试超出范围的值（应该被限制）
+	para.SetOutlineLevel(10)
+	if para.Properties.OutlineLevel.Val != "8" {
+		t.Errorf("Expected OutlineLevel to be capped at '8', got '%s'", para.Properties.OutlineLevel.Val)
+	}
+
+	para.SetOutlineLevel(-1)
+	if para.Properties.OutlineLevel.Val != "0" {
+		t.Errorf("Expected OutlineLevel to be floored at '0', got '%s'", para.Properties.OutlineLevel.Val)
+	}
+}
+
+// TestParagraphSetParagraphFormat 测试综合段落格式设置
+func TestParagraphSetParagraphFormat(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试综合格式设置")
+
+	// 测试完整配置
+	config := &ParagraphFormatConfig{
+		Alignment:       AlignCenter,
+		Style:           "Heading1",
+		LineSpacing:     1.5,
+		BeforePara:      24,
+		AfterPara:       12,
+		FirstLineCm:     0.5,
+		LeftCm:          1.0,
+		RightCm:         0.5,
+		KeepWithNext:    true,
+		KeepLines:       true,
+		PageBreakBefore: true,
+		WidowControl:    true,
+		OutlineLevel:    0,
+	}
+
+	para.SetParagraphFormat(config)
+
+	// 验证所有属性
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	// 验证对齐
+	if para.Properties.Justification == nil || para.Properties.Justification.Val != string(AlignCenter) {
+		t.Error("Alignment not set correctly")
+	}
+
+	// 验证样式
+	if para.Properties.ParagraphStyle == nil || para.Properties.ParagraphStyle.Val != "Heading1" {
+		t.Error("Style not set correctly")
+	}
+
+	// 验证间距
+	if para.Properties.Spacing == nil {
+		t.Fatal("Spacing should not be nil")
+	}
+
+	// 验证缩进
+	if para.Properties.Indentation == nil {
+		t.Fatal("Indentation should not be nil")
+	}
+
+	// 验证分页控制
+	if para.Properties.KeepNext == nil || para.Properties.KeepNext.Val != "1" {
+		t.Error("KeepNext not set correctly")
+	}
+
+	if para.Properties.KeepLines == nil || para.Properties.KeepLines.Val != "1" {
+		t.Error("KeepLines not set correctly")
+	}
+
+	if para.Properties.PageBreakBefore == nil || para.Properties.PageBreakBefore.Val != "1" {
+		t.Error("PageBreakBefore not set correctly")
+	}
+
+	if para.Properties.WidowControl == nil || para.Properties.WidowControl.Val != "1" {
+		t.Error("WidowControl not set correctly")
+	}
+
+	// 验证大纲级别
+	if para.Properties.OutlineLevel == nil || para.Properties.OutlineLevel.Val != "0" {
+		t.Error("OutlineLevel not set correctly")
+	}
+}
+
+// TestParagraphSetParagraphFormatNil 测试nil配置
+func TestParagraphSetParagraphFormatNil(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试nil配置")
+
+	// nil配置不应该导致panic
+	para.SetParagraphFormat(nil)
+
+	// 段落应该保持默认状态
+	if para.Properties != nil && para.Properties.Justification != nil {
+		t.Error("Properties should remain unchanged with nil config")
+	}
+}
+
+// TestParagraphSetParagraphFormatPartial 测试部分配置
+func TestParagraphSetParagraphFormatPartial(t *testing.T) {
+	doc := New()
+	para := doc.AddParagraph("测试部分配置")
+
+	// 只设置部分属性
+	config := &ParagraphFormatConfig{
+		Alignment:    AlignRight,
+		KeepWithNext: true,
+		LineSpacing:  2.0,
+	}
+
+	para.SetParagraphFormat(config)
+
+	// 验证设置的属性
+	if para.Properties == nil {
+		t.Fatal("Properties should not be nil")
+	}
+
+	if para.Properties.Justification == nil || para.Properties.Justification.Val != string(AlignRight) {
+		t.Error("Alignment not set correctly")
+	}
+
+	if para.Properties.KeepNext == nil || para.Properties.KeepNext.Val != "1" {
+		t.Error("KeepNext not set correctly")
+	}
+
+	if para.Properties.Spacing == nil {
+		t.Error("Spacing should be set")
+	}
+
+	// 验证未设置的属性保持默认
+	if para.Properties.PageBreakBefore != nil {
+		t.Error("PageBreakBefore should remain nil")
+	}
+}
+
 // TestDocumentSave 测试文档保存
 func TestDocumentSave(t *testing.T) {
 	doc := New()
