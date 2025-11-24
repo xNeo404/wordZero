@@ -7,6 +7,26 @@ import (
 	"github.com/ZeroHawkeye/wordZero/pkg/style"
 )
 
+// assertParagraphContent 验证段落的文本内容（带边界检查）
+func assertParagraphContent(t *testing.T, paragraphs []*Paragraph, index int, expectedContent string) {
+	t.Helper()
+	if index >= len(paragraphs) {
+		t.Errorf("段落索引 %d 超出范围，总共只有 %d 个段落", index, len(paragraphs))
+		return
+	}
+	
+	para := paragraphs[index]
+	if len(para.Runs) == 0 {
+		t.Errorf("索引 %d 的段落没有任何运行（Runs）", index)
+		return
+	}
+	
+	actualContent := para.Runs[0].Text.Content
+	if actualContent != expectedContent {
+		t.Errorf("索引 %d 的段落内容应该是'%s'，实际是'%s'", index, expectedContent, actualContent)
+	}
+}
+
 // TestNewDocument 测试新文档创建
 func TestNewDocument(t *testing.T) {
 	doc := New()
@@ -767,22 +787,9 @@ func TestRemoveParagraphAt(t *testing.T) {
 		t.Errorf("删除后期望文档包含2个段落，实际包含 %d 个", len(paragraphs))
 	}
 	
-	// 验证剩余段落的内容（添加边界检查）
-	if len(paragraphs) > 0 && len(paragraphs[0].Runs) > 0 {
-		if paragraphs[0].Runs[0].Text.Content != "第一段" {
-			t.Errorf("第一个段落内容应该是'第一段'，实际是'%s'", paragraphs[0].Runs[0].Text.Content)
-		}
-	} else {
-		t.Error("第一个段落应该存在且包含文本")
-	}
-	
-	if len(paragraphs) > 1 && len(paragraphs[1].Runs) > 0 {
-		if paragraphs[1].Runs[0].Text.Content != "第三段" {
-			t.Errorf("第二个段落内容应该是'第三段'，实际是'%s'", paragraphs[1].Runs[0].Text.Content)
-		}
-	} else {
-		t.Error("第二个段落应该存在且包含文本")
-	}
+	// 验证剩余段落的内容
+	assertParagraphContent(t, paragraphs, 0, "第一段")
+	assertParagraphContent(t, paragraphs, 1, "第三段")
 	
 	// 尝试删除超出范围的索引
 	if doc.RemoveParagraphAt(10) {

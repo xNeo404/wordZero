@@ -147,7 +147,7 @@ type Run struct {
 	XMLName    xml.Name        `xml:"w:r"`
 	Properties *RunProperties  `xml:"w:rPr,omitempty"`
 	Text       Text            `xml:"w:t,omitempty"`
-	Break      *Break          `xml:"w:br,omitempty"`
+	Break      *Break          `xml:"w:br,omitempty"` // 分页符、分栏符或换行符
 	Drawing    *DrawingElement `xml:"w:drawing,omitempty"`
 	FieldChar  *FieldChar      `xml:"w:fldChar,omitempty"`
 	InstrText  *InstrText      `xml:"w:instrText,omitempty"`
@@ -233,9 +233,10 @@ type Text struct {
 }
 
 // Break 分页符、分栏符或换行符
+// Break represents page breaks, column breaks, or line breaks in Word documents
 type Break struct {
 	XMLName xml.Name `xml:"w:br"`
-	Type    string   `xml:"w:type,attr,omitempty"` // "page" 表示分页符
+	Type    string   `xml:"w:type,attr,omitempty"` // "page" 表示分页符 / "page" indicates a page break
 }
 
 // Relationships 文档关系
