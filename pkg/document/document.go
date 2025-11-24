@@ -489,6 +489,15 @@ func Open(filename string) (*Document, error) {
 		doc.styleManager = style.NewStyleManager()
 	}
 
+	// 解析文档关系（包括图片等资源的关系）
+	if err := doc.parseDocumentRelationships(); err != nil {
+		Debugf("解析文档关系失败，使用默认值: %v", err)
+		// 如果解析失败，保持初始化的空关系列表
+	}
+
+	// 根据已有的图片关系更新nextImageID计数器
+	doc.updateNextImageID()
+
 	Infof("成功打开文档: %s", filename)
 	return doc, nil
 }
@@ -554,6 +563,15 @@ func OpenFromMemory(readCloser io.ReadCloser) (*Document, error) {
 		// 如果样式解析失败，重新初始化为默认样式
 		doc.styleManager = style.NewStyleManager()
 	}
+
+	// 解析文档关系（包括图片等资源的关系）
+	if err := doc.parseDocumentRelationships(); err != nil {
+		Debugf("解析文档关系失败，使用默认值: %v", err)
+		// 如果解析失败，保持初始化的空关系列表
+	}
+
+	// 根据已有的图片关系更新nextImageID计数器
+	doc.updateNextImageID()
 
 	Infof("成功打开文档")
 	return doc, nil
@@ -2344,6 +2362,69 @@ func (d *Document) parseStyles() error {
 
 	Debugf("样式解析完成")
 	return nil
+}
+
+// parseDocumentRelationships 解析文档关系文件（word/_rels/document.xml.rels）
+// 该文件包含文档中图片、页眉、页脚等资源的关系
+func (d *Document) parseDocumentRelationships() error {
+	Debugf("开始解析文档关系文件")
+
+	// 查找文档关系文件
+	docRelsData, ok := d.parts["word/_rels/document.xml.rels"]
+	if !ok {
+		// 文档可能没有关系文件（没有图片等资源），这不是错误
+		Debugf("文档关系文件不存在，文档可能不包含图片等资源")
+		return nil
+	}
+
+	// 解析XML
+	var relationships Relationships
+	if err := xml.Unmarshal(docRelsData, &relationships); err != nil {
+		return WrapError("parse_document_relationships", err)
+	}
+
+	// 保存解析的关系（不包括styles.xml，因为它在serializeDocumentRelationships中会自动添加）
+	// 过滤掉styles.xml的关系，因为它总是rId1并在保存时自动添加
+	filteredRels := make([]Relationship, 0)
+	for _, rel := range relationships.Relationships {
+		if rel.Type != "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" {
+			filteredRels = append(filteredRels, rel)
+		}
+	}
+	
+	d.documentRelationships.Relationships = filteredRels
+	Debugf("文档关系解析完成，共 %d 个关系", len(filteredRels))
+	return nil
+}
+
+// updateNextImageID 根据已有的图片关系更新nextImageID计数器
+// 确保新添加的图片ID不会与现有图片冲突
+func (d *Document) updateNextImageID() {
+	maxID := 0
+	
+	// 遍历文档关系，查找最大的图片ID
+	for _, rel := range d.documentRelationships.Relationships {
+		// 检查是否是图片关系
+		if rel.Type == "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" {
+			// 从关系ID中提取数字（rId2, rId3等）
+			// 注意：rId1保留给styles.xml
+			var id int
+			if _, err := fmt.Sscanf(rel.ID, "rId%d", &id); err == nil {
+				if id > maxID {
+					maxID = id
+				}
+			}
+		}
+	}
+	
+	// 设置nextImageID为最大ID + 1，确保从rId2开始（rId1给styles.xml）
+	// 如果没有现有图片，maxID为0，nextImageID应该为1（第一个图片会使用rId2）
+	d.nextImageID = maxID
+	if d.nextImageID == 0 {
+		d.nextImageID = 1
+	}
+	
+	Debugf("更新图片ID计数器: nextImageID = %d", d.nextImageID)
 }
 
 // ToBytes 将文档转换为字节数组
