@@ -147,6 +147,7 @@ type Run struct {
 	XMLName    xml.Name        `xml:"w:r"`
 	Properties *RunProperties  `xml:"w:rPr,omitempty"`
 	Text       Text            `xml:"w:t,omitempty"`
+	Break      *Break          `xml:"w:br,omitempty"`
 	Drawing    *DrawingElement `xml:"w:drawing,omitempty"`
 	FieldChar  *FieldChar      `xml:"w:fldChar,omitempty"`
 	InstrText  *InstrText      `xml:"w:instrText,omitempty"`
@@ -229,6 +230,12 @@ type Text struct {
 	XMLName xml.Name `xml:"w:t"`
 	Space   string   `xml:"xml:space,attr,omitempty"`
 	Content string   `xml:",chardata"`
+}
+
+// Break 分页符、分栏符或换行符
+type Break struct {
+	XMLName xml.Name `xml:"w:br"`
+	Type    string   `xml:"w:type,attr,omitempty"` // "page" 表示分页符
 }
 
 // Relationships 文档关系
@@ -1126,6 +1133,34 @@ func (d *Document) AddHeadingParagraphWithBookmark(text string, level int, bookm
 	}
 
 	return p
+}
+
+// AddPageBreak 向文档添加一个分页符。
+//
+// 分页符会强制在当前位置开始一个新页面。
+// 此方法会创建一个包含分页符的段落。
+//
+// 示例:
+//
+//	doc := document.New()
+//	doc.AddParagraph("第一页内容")
+//	doc.AddPageBreak()
+//	doc.AddParagraph("第二页内容")
+func (d *Document) AddPageBreak() {
+	Debugf("添加分页符")
+	
+	// 创建一个包含分页符的段落
+	p := &Paragraph{
+		Runs: []Run{
+			{
+				Break: &Break{
+					Type: "page",
+				},
+			},
+		},
+	}
+	
+	d.Body.Elements = append(d.Body.Elements, p)
 }
 
 // SetStyle 设置段落的样式。
@@ -2494,6 +2529,80 @@ func (b *Body) GetTables() []*Table {
 // AddElement 添加元素到文档主体
 func (b *Body) AddElement(element interface{}) {
 	b.Elements = append(b.Elements, element)
+}
+
+// RemoveParagraph 从文档中删除指定的段落。
+//
+// 参数 paragraph 是要删除的段落对象。
+// 如果段落不存在于文档中，此方法不会产生任何效果。
+//
+// 返回值表示是否成功删除段落。
+//
+// 示例:
+//
+//	doc := document.New()
+//	para := doc.AddParagraph("要删除的段落")
+//	doc.RemoveParagraph(para)
+func (d *Document) RemoveParagraph(paragraph *Paragraph) bool {
+	for i, element := range d.Body.Elements {
+		if p, ok := element.(*Paragraph); ok && p == paragraph {
+			// 删除元素
+			d.Body.Elements = append(d.Body.Elements[:i], d.Body.Elements[i+1:]...)
+			Debugf("删除段落: 索引 %d", i)
+			return true
+		}
+	}
+	Debugf("警告：未找到要删除的段落")
+	return false
+}
+
+// RemoveParagraphAt 根据索引删除段落。
+//
+// 参数 index 是要删除的段落在所有段落中的索引（从0开始）。
+// 如果索引超出范围，此方法会返回错误。
+//
+// 返回值表示是否成功删除段落。
+//
+// 示例:
+//
+//	doc := document.New()
+//	doc.AddParagraph("第一段")
+//	doc.AddParagraph("第二段")
+//	doc.RemoveParagraphAt(0)  // 删除第一段
+func (d *Document) RemoveParagraphAt(index int) bool {
+	paragraphs := d.Body.GetParagraphs()
+	if index < 0 || index >= len(paragraphs) {
+		Debugf("错误：段落索引 %d 超出范围 [0, %d)", index, len(paragraphs))
+		return false
+	}
+	
+	targetParagraph := paragraphs[index]
+	return d.RemoveParagraph(targetParagraph)
+}
+
+// RemoveElementAt 根据元素索引删除元素（包括段落、表格等）。
+//
+// 参数 index 是要删除的元素在文档主体中的索引（从0开始）。
+// 如果索引超出范围，此方法会返回错误。
+//
+// 返回值表示是否成功删除元素。
+//
+// 示例:
+//
+//	doc := document.New()
+//	doc.AddParagraph("段落")
+//	doc.AddTable(&document.TableConfig{Rows: 2, Cols: 2})
+//	doc.RemoveElementAt(0)  // 删除第一个元素（段落）
+func (d *Document) RemoveElementAt(index int) bool {
+	if index < 0 || index >= len(d.Body.Elements) {
+		Debugf("错误：元素索引 %d 超出范围 [0, %d)", index, len(d.Body.Elements))
+		return false
+	}
+	
+	// 删除元素
+	d.Body.Elements = append(d.Body.Elements[:index], d.Body.Elements[index+1:]...)
+	Debugf("删除元素: 索引 %d", index)
+	return true
 }
 
 // parseTableBorders 解析表格边框
