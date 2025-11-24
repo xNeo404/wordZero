@@ -311,6 +311,44 @@ Conversion complete!`
 }
 ```
 
+### Document Pagination and Paragraph Deletion Example ✨ **New**
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+)
+
+func main() {
+    doc := document.New()
+    
+    // Add first page content
+    doc.AddHeadingParagraph("Chapter 1: Introduction", 1)
+    doc.AddParagraph("This is the content of chapter 1.")
+    
+    // Add page break to start a new page
+    doc.AddPageBreak()
+    
+    // Add second page content
+    doc.AddHeadingParagraph("Chapter 2: Main Content", 1)
+    tempPara := doc.AddParagraph("This is a temporary paragraph.")
+    doc.AddParagraph("This is the content of chapter 2.")
+    
+    // Delete temporary paragraph
+    doc.RemoveParagraph(tempPara)
+    
+    // You can also delete by index
+    // doc.RemoveParagraphAt(1)  // Delete second paragraph
+    
+    // Save document
+    if err := doc.Save("example.docx"); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ## Documentation and Examples
 
 ### 📚 Complete Documentation
@@ -338,6 +376,7 @@ See example code in the `examples/` directory:
 - `examples/template_inheritance_demo/` - Template inheritance feature demo ✨ **New**
 - `examples/template_image_demo/` - Image placeholder template demo ✨ **New**
 - `examples/markdown_conversion/` - Markdown to Word feature demo ✨ **New**
+- `examples/pagination_deletion_demo/` - Pagination and paragraph deletion demo ✨ **New**
 
 Run examples:
 ```bash
@@ -367,11 +406,13 @@ go run ./examples/markdown_conversion/
 - **Text Formatting**: Fonts, sizes, colors, bold, italic, etc.
 - **Style System**: 18 predefined styles + custom style support
 - **Paragraph Format**: Alignment, spacing, indentation, complete support
+- **Paragraph Management**: Paragraph deletion, deletion by index, element removal ✨ **New**
+- **Document Pagination**: Page break insertion for multi-page document structure ✨ **New**
 - **Table Functionality**: Complete table operations, styling, cell iterators
 - **Page Settings**: Page size, margins, headers/footers, etc.
 - **Advanced Features**: Table of contents generation, footnotes/endnotes, list numbering, template engine (with template inheritance)
 - **Image Features**: Image insertion, size adjustment, position setting
-- **Markdown to Word**: High-quality Markdown to Word conversion based on goldmark ✨ **New**
+- **Markdown to Word**: High-quality Markdown to Word conversion based on goldmark
 
 ### 🚧 Planned Features
 - Table sorting and advanced operations

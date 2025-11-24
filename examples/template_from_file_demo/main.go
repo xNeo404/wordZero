@@ -179,8 +179,8 @@ func createDocumentCover(doc *document.Document) {
 	authorDatePara.Runs = []document.Run{*authorRun}
 	authorDatePara.SetAlignment(document.AlignCenter)
 
-	// 添加分页符（如果支持的话）
-	doc.AddParagraph("\n\n")
+	// 添加分页符
+	doc.AddPageBreak()
 }
 
 // createProjectOverview 创建项目概述部分
