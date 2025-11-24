@@ -1785,18 +1785,6 @@ type TableRowPropertiesExtended struct {
 	KeepLines *KeepLines `xml:"w:keepLines,omitempty"`
 }
 
-// KeepNext 与下一段落保持在一起
-type KeepNext struct {
-	XMLName xml.Name `xml:"w:keepNext"`
-	Val     string   `xml:"w:val,attr,omitempty"`
-}
-
-// KeepLines 保持行在一起
-type KeepLines struct {
-	XMLName xml.Name `xml:"w:keepLines"`
-	Val     string   `xml:"w:val,attr,omitempty"`
-}
-
 // 扩展现有的TableRowProperties结构
 func (trp *TableRowProperties) SetCantSplit(cantSplit bool) {
 	if cantSplit {

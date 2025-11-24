@@ -344,6 +344,68 @@ func demonstrateTemplateInheritance() {
 - [`SetAlignment(alignment AlignmentType)`](document.go) - 设置段落对齐方式
 - [`SetSpacing(config *SpacingConfig)`](document.go) - 设置段落间距
 - [`SetStyle(styleID string)`](document.go) - 设置段落样式
+- [`SetIndentation(firstLineCm, leftCm, rightCm float64)`](document.go) - 设置段落缩进 ✨ **已完善**
+- [`SetKeepWithNext(keep bool)`](document.go) - 设置与下一段落保持在同一页 ✨ **新增**
+- [`SetKeepLines(keep bool)`](document.go) - 设置段落所有行保持在同一页 ✨ **新增**
+- [`SetPageBreakBefore(pageBreak bool)`](document.go) - 设置段前分页 ✨ **新增**
+- [`SetWidowControl(control bool)`](document.go) - 设置孤行控制 ✨ **新增**
+- [`SetOutlineLevel(level int)`](document.go) - 设置大纲级别 ✨ **新增**
+- [`SetParagraphFormat(config *ParagraphFormatConfig)`](document.go) - 一次性设置所有段落格式属性 ✨ **新增**
+
+#### 段落格式高级功能 ✨ **新增功能**
+
+WordZero现在支持完整的段落格式自定义功能，提供与Microsoft Word相同的高级段落控制选项。
+
+**分页控制功能**：
+- **SetKeepWithNext** - 确保段落与下一段落保持在同一页，避免标题单独出现在页面底部
+- **SetKeepLines** - 防止段落被分页拆分，保持段落完整性
+- **SetPageBreakBefore** - 在段落前强制插入分页符，常用于章节开始
+
+**孤行控制**：
+- **SetWidowControl** - 防止段落第一行或最后一行单独出现在页面顶部或底部，提升排版质量
+
+**大纲级别**：
+- **SetOutlineLevel** - 设置段落的大纲级别（0-8），用于文档导航窗格显示和目录生成
+
+**综合格式设置**：
+- **SetParagraphFormat** - 使用`ParagraphFormatConfig`结构一次性设置所有段落属性
+  - 基础格式：对齐方式、样式
+  - 间距设置：行间距、段前段后间距、首行缩进
+  - 缩进设置：首行缩进、左右缩进（支持悬挂缩进）
+  - 分页控制：与下段保持、行保持、段前分页、孤行控制
+  - 大纲级别：0-8级别设置
+
+**使用示例**：
+
+```go
+// 方法1：使用单独的方法设置
+title := doc.AddParagraph("第一章 概述")
+title.SetAlignment(document.AlignCenter)
+title.SetKeepWithNext(true)
+title.SetPageBreakBefore(true)
+title.SetOutlineLevel(0)
+
+// 方法2：使用SetParagraphFormat一次性设置
+para := doc.AddParagraph("重要内容")
+para.SetParagraphFormat(&document.ParagraphFormatConfig{
+    Alignment:       document.AlignJustify,
+    Style:           "Normal",
+    LineSpacing:     1.5,
+    BeforePara:      12,
+    AfterPara:       6,
+    FirstLineCm:     0.5,
+    KeepWithNext:    true,
+    KeepLines:       true,
+    WidowControl:    true,
+    OutlineLevel:    0,
+})
+```
+
+**应用场景**：
+- **文档结构化** - 使用大纲级别创建清晰的文档层次结构
+- **专业排版** - 使用分页控制确保标题和内容的关联性
+- **内容保护** - 使用行保持防止重要段落被分页
+- **章节管理** - 使用段前分页实现章节的页面独立性
 
 ### 段落内容操作
 - [`AddFormattedText(text string, format *TextFormat)`](document.go) - 添加格式化文本

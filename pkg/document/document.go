@@ -108,6 +108,11 @@ type ParagraphProperties struct {
 	Spacing             *Spacing             `xml:"w:spacing,omitempty"`
 	Indentation         *Indentation         `xml:"w:ind,omitempty"`
 	Justification       *Justification       `xml:"w:jc,omitempty"`
+	KeepNext            *KeepNext            `xml:"w:keepNext,omitempty"`     // 与下一段落保持在一起
+	KeepLines           *KeepLines           `xml:"w:keepLines,omitempty"`    // 段落中的行保持在一起
+	PageBreakBefore     *PageBreakBefore     `xml:"w:pageBreakBefore,omitempty"` // 段前分页
+	WidowControl        *WidowControl        `xml:"w:widowControl,omitempty"` // 孤行控制
+	OutlineLevel        *OutlineLevel        `xml:"w:outlineLvl,omitempty"`   // 大纲级别
 }
 
 // ParagraphBorder 段落边框
@@ -139,6 +144,36 @@ type Spacing struct {
 // Justification 对齐方式
 type Justification struct {
 	XMLName xml.Name `xml:"w:jc"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// KeepNext 与下一段落保持在一起
+type KeepNext struct {
+	XMLName xml.Name `xml:"w:keepNext"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// KeepLines 段落中的行保持在一起
+type KeepLines struct {
+	XMLName xml.Name `xml:"w:keepLines"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// PageBreakBefore 段前分页
+type PageBreakBefore struct {
+	XMLName xml.Name `xml:"w:pageBreakBefore"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// WidowControl 孤行控制
+type WidowControl struct {
+	XMLName xml.Name `xml:"w:widowControl"`
+	Val     string   `xml:"w:val,attr,omitempty"`
+}
+
+// OutlineLevel 大纲级别
+type OutlineLevel struct {
+	XMLName xml.Name `xml:"w:outlineLvl"`
 	Val     string   `xml:"w:val,attr"`
 }
 
@@ -1217,6 +1252,257 @@ func (p *Paragraph) SetIndentation(firstLineCm, leftCm, rightCm float64) {
 	}
 
 	Debugf("设置段落缩进: 首行=%.2fcm, 左=%.2fcm, 右=%.2fcm", firstLineCm, leftCm, rightCm)
+}
+
+// SetKeepWithNext 设置段落与下一段落保持在同一页。
+//
+// 此方法用于确保当前段落和下一段落不会被分页符分隔，
+// 常用于标题和正文的组合，或需要保持连续性的内容。
+//
+// 参数：
+//   - keep: true表示启用该属性，false表示禁用
+//
+// 示例：
+//
+//	// 标题与下一段保持在一起
+//	title := doc.AddParagraph("第一章 概述")
+//	title.SetKeepWithNext(true)
+//	doc.AddParagraph("本章介绍...")  // 这段内容会与标题保持在同一页
+func (p *Paragraph) SetKeepWithNext(keep bool) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if keep {
+		p.Properties.KeepNext = &KeepNext{Val: "1"}
+		Debugf("设置段落与下一段保持在一起")
+	} else {
+		p.Properties.KeepNext = nil
+		Debugf("取消段落与下一段保持在一起")
+	}
+}
+
+// SetKeepLines 设置段落中的所有行保持在同一页。
+//
+// 此方法用于防止段落在分页时被拆分到多个页面，
+// 确保段落的所有行都显示在同一页上。
+//
+// 参数：
+//   - keep: true表示启用该属性，false表示禁用
+//
+// 示例：
+//
+//	// 确保整个段落不被分页
+//	para := doc.AddParagraph("这是一个重要的段落，需要保持完整显示。")
+//	para.SetKeepLines(true)
+func (p *Paragraph) SetKeepLines(keep bool) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if keep {
+		p.Properties.KeepLines = &KeepLines{Val: "1"}
+		Debugf("设置段落行保持在一起")
+	} else {
+		p.Properties.KeepLines = nil
+		Debugf("取消段落行保持在一起")
+	}
+}
+
+// SetPageBreakBefore 设置段落前插入分页符。
+//
+// 此方法用于在段落之前强制插入分页符，使段落从新页开始显示。
+// 常用于章节标题或需要单独成页的内容。
+//
+// 参数：
+//   - pageBreak: true表示启用段前分页，false表示禁用
+//
+// 示例：
+//
+//	// 章节标题从新页开始
+//	chapter := doc.AddParagraph("第二章 详细说明")
+//	chapter.SetPageBreakBefore(true)
+func (p *Paragraph) SetPageBreakBefore(pageBreak bool) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if pageBreak {
+		p.Properties.PageBreakBefore = &PageBreakBefore{Val: "1"}
+		Debugf("设置段前分页")
+	} else {
+		p.Properties.PageBreakBefore = nil
+		Debugf("取消段前分页")
+	}
+}
+
+// SetWidowControl 设置段落的孤行控制。
+//
+// 孤行控制用于防止段落的第一行或最后一行单独出现在页面底部或顶部，
+// 提高文档的排版质量。
+//
+// 参数：
+//   - control: true表示启用孤行控制（默认），false表示禁用
+//
+// 示例：
+//
+//	para := doc.AddParagraph("这是一个长段落...")
+//	para.SetWidowControl(true)  // 启用孤行控制
+func (p *Paragraph) SetWidowControl(control bool) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if control {
+		p.Properties.WidowControl = &WidowControl{Val: "1"}
+		Debugf("启用段落孤行控制")
+	} else {
+		p.Properties.WidowControl = &WidowControl{Val: "0"}
+		Debugf("禁用段落孤行控制")
+	}
+}
+
+// SetOutlineLevel 设置段落的大纲级别。
+//
+// 大纲级别用于在文档导航窗格中显示文档结构，级别范围为0-8。
+// 通常用于标题段落，配合目录功能使用。
+//
+// 参数：
+//   - level: 大纲级别，0-8之间的整数（0表示正文，1-8对应标题1-8）
+//
+// 示例：
+//
+//	// 设置为一级标题的大纲级别
+//	title := doc.AddParagraph("第一章")
+//	title.SetOutlineLevel(0)  // 对应Heading1
+//
+//	// 设置为二级标题的大纲级别
+//	subtitle := doc.AddParagraph("1.1 概述")
+//	subtitle.SetOutlineLevel(1)  // 对应Heading2
+func (p *Paragraph) SetOutlineLevel(level int) {
+	if p.Properties == nil {
+		p.Properties = &ParagraphProperties{}
+	}
+
+	if level < 0 || level > 8 {
+		Warnf("大纲级别应在0-8之间，已调整为有效范围")
+		if level < 0 {
+			level = 0
+		} else {
+			level = 8
+		}
+	}
+
+	p.Properties.OutlineLevel = &OutlineLevel{Val: strconv.Itoa(level)}
+	Debugf("设置段落大纲级别: %d", level)
+}
+
+// ParagraphFormatConfig 段落格式配置
+//
+// 此结构体提供了段落所有格式属性的统一配置接口，
+// 允许一次性设置多个段落属性，提高代码的可读性和易用性。
+type ParagraphFormatConfig struct {
+	// 基础格式
+	Alignment AlignmentType // 对齐方式（AlignLeft, AlignCenter, AlignRight, AlignJustify）
+	Style     string        // 段落样式ID（如"Heading1", "Normal"等）
+
+	// 间距设置
+	LineSpacing     float64 // 行间距（倍数，如1.5表示1.5倍行距）
+	BeforePara      int     // 段前间距（磅）
+	AfterPara       int     // 段后间距（磅）
+	FirstLineIndent int     // 首行缩进（磅）
+
+	// 缩进设置
+	FirstLineCm float64 // 首行缩进（厘米，可以为负数表示悬挂缩进）
+	LeftCm      float64 // 左缩进（厘米）
+	RightCm     float64 // 右缩进（厘米）
+
+	// 分页与控制
+	KeepWithNext    bool // 与下一段落保持在同一页
+	KeepLines       bool // 段落中的所有行保持在同一页
+	PageBreakBefore bool // 段前分页
+	WidowControl    bool // 孤行控制
+
+	// 大纲级别
+	OutlineLevel int // 大纲级别（0-8，0表示正文，1-8对应标题1-8）
+}
+
+// SetParagraphFormat 使用配置一次性设置段落的所有格式属性。
+//
+// 此方法提供了一种便捷的方式来设置段落的所有格式属性，
+// 而不需要调用多个单独的设置方法。只有非零值的属性会被应用。
+//
+// 参数：
+//   - config: 段落格式配置，包含所有格式属性
+//
+// 示例：
+//
+//	// 创建一个带完整格式的段落
+//	para := doc.AddParagraph("重要章节标题")
+//	para.SetParagraphFormat(&document.ParagraphFormatConfig{
+//		Alignment:       document.AlignCenter,
+//		Style:           "Heading1",
+//		LineSpacing:     1.5,
+//		BeforePara:      24,
+//		AfterPara:       12,
+//		KeepWithNext:    true,
+//		PageBreakBefore: true,
+//		OutlineLevel:    0,
+//	})
+//
+//	// 设置带缩进的正文段落
+//	para2 := doc.AddParagraph("正文内容...")
+//	para2.SetParagraphFormat(&document.ParagraphFormatConfig{
+//		Alignment:       document.AlignJustify,
+//		FirstLineCm:     0.5,
+//		LineSpacing:     1.5,
+//		BeforePara:      6,
+//		AfterPara:       6,
+//		WidowControl:    true,
+//	})
+func (p *Paragraph) SetParagraphFormat(config *ParagraphFormatConfig) {
+	if config == nil {
+		return
+	}
+
+	// 设置对齐方式
+	if config.Alignment != "" {
+		p.SetAlignment(config.Alignment)
+	}
+
+	// 设置样式
+	if config.Style != "" {
+		p.SetStyle(config.Style)
+	}
+
+	// 设置间距（如果有任何间距设置）
+	if config.LineSpacing > 0 || config.BeforePara > 0 || config.AfterPara > 0 || config.FirstLineIndent > 0 {
+		p.SetSpacing(&SpacingConfig{
+			LineSpacing:     config.LineSpacing,
+			BeforePara:      config.BeforePara,
+			AfterPara:       config.AfterPara,
+			FirstLineIndent: config.FirstLineIndent,
+		})
+	}
+
+	// 设置缩进（如果有任何缩进设置）
+	if config.FirstLineCm != 0 || config.LeftCm != 0 || config.RightCm != 0 {
+		p.SetIndentation(config.FirstLineCm, config.LeftCm, config.RightCm)
+	}
+
+	// 设置分页和控制属性
+	p.SetKeepWithNext(config.KeepWithNext)
+	p.SetKeepLines(config.KeepLines)
+	p.SetPageBreakBefore(config.PageBreakBefore)
+	p.SetWidowControl(config.WidowControl)
+
+	// 设置大纲级别
+	if config.OutlineLevel >= 0 && config.OutlineLevel <= 8 {
+		p.SetOutlineLevel(config.OutlineLevel)
+	}
+
+	Debugf("应用段落格式配置: 对齐=%s, 样式=%s, 行距=%.1f, 段前=%d, 段后=%d",
+		config.Alignment, config.Style, config.LineSpacing, config.BeforePara, config.AfterPara)
 }
 
 // ParagraphBorderConfig 段落边框配置（区别于表格边框配置）
