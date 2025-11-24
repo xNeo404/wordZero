@@ -8,6 +8,7 @@ import (
 )
 
 // assertParagraphContent 验证段落的文本内容（带边界检查）
+// assertParagraphContent verifies the text content of a paragraph with bounds checking
 func assertParagraphContent(t *testing.T, paragraphs []*Paragraph, index int, expectedContent string) {
 	t.Helper()
 	if index >= len(paragraphs) {

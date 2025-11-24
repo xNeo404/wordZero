@@ -147,7 +147,7 @@ type Run struct {
 	XMLName    xml.Name        `xml:"w:r"`
 	Properties *RunProperties  `xml:"w:rPr,omitempty"`
 	Text       Text            `xml:"w:t,omitempty"`
-	Break      *Break          `xml:"w:br,omitempty"` // 分页符、分栏符或换行符
+	Break      *Break          `xml:"w:br,omitempty"` // 分页符 / Page break
 	Drawing    *DrawingElement `xml:"w:drawing,omitempty"`
 	FieldChar  *FieldChar      `xml:"w:fldChar,omitempty"`
 	InstrText  *InstrText      `xml:"w:instrText,omitempty"`
@@ -232,8 +232,8 @@ type Text struct {
 	Content string   `xml:",chardata"`
 }
 
-// Break 分页符、分栏符或换行符
-// Break represents page breaks, column breaks, or line breaks in Word documents
+// Break 分页符
+// Break represents page breaks in Word documents
 type Break struct {
 	XMLName xml.Name `xml:"w:br"`
 	Type    string   `xml:"w:type,attr,omitempty"` // "page" 表示分页符 / "page" indicates a page break
@@ -2571,6 +2571,12 @@ func (d *Document) RemoveParagraph(paragraph *Paragraph) bool {
 //	doc.AddParagraph("第二段")
 //	doc.RemoveParagraphAt(0)  // 删除第一段
 func (d *Document) RemoveParagraphAt(index int) bool {
+	// 提前验证负数索引
+	if index < 0 {
+		Debugf("错误：段落索引不能为负数: %d", index)
+		return false
+	}
+	
 	// 优化：单次遍历找到目标段落及其元素索引
 	paragraphCount := 0
 	for i, element := range d.Body.Elements {
