@@ -144,7 +144,7 @@ type Spacing struct {
 // Justification 对齐方式
 type Justification struct {
 	XMLName xml.Name `xml:"w:jc"`
-	Val     string   `xml:"w:val,attr"`
+	Val     string   `xml:"w:val,attr,omitempty"`
 }
 
 // KeepNext 与下一段落保持在一起
