@@ -311,6 +311,44 @@ func main() {
 }
 ```
 
+### 文档分页和段落删除功能示例 ✨ **新增**
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/ZeroHawkeye/wordZero/pkg/document"
+)
+
+func main() {
+    doc := document.New()
+    
+    // 添加第一页内容
+    doc.AddHeadingParagraph("第一章：引言", 1)
+    doc.AddParagraph("这是第一章的内容。")
+    
+    // 添加分页符，开始新的一页
+    doc.AddPageBreak()
+    
+    // 添加第二页内容
+    doc.AddHeadingParagraph("第二章：正文", 1)
+    tempPara := doc.AddParagraph("这是一个临时段落。")
+    doc.AddParagraph("这是第二章的内容。")
+    
+    // 删除临时段落
+    doc.RemoveParagraph(tempPara)
+    
+    // 也可以按索引删除段落
+    // doc.RemoveParagraphAt(1)  // 删除第二个段落
+    
+    // 保存文档
+    if err := doc.Save("example.docx"); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ## 文档和示例
 
 ### 📚 完整文档
@@ -338,6 +376,7 @@ func main() {
 - `examples/template_inheritance_demo/` - 模板继承功能演示 ✨ **新增**
 - `examples/template_image_demo/` - 图片占位符模板演示 ✨ **新增**
 - `examples/markdown_conversion/` - Markdown转Word功能演示 ✨ **新增**
+- `examples/pagination_deletion_demo/` - 分页和段落删除功能演示 ✨ **新增**
 
 运行示例：
 ```bash
@@ -367,11 +406,13 @@ go run ./examples/markdown_conversion/
 - **文本格式化**: 字体、大小、颜色、粗体、斜体等
 - **样式系统**: 18种预定义样式 + 自定义样式支持
 - **段落格式**: 对齐、间距、缩进等完整支持
+- **段落管理**: 段落删除、按索引删除、元素删除 ✨ **新增**
+- **文档分页**: 分页符插入，支持多页文档结构 ✨ **新增**
 - **表格功能**: 完整的表格操作、样式设置、单元格迭代器
 - **页面设置**: 页面尺寸、边距、页眉页脚等
 - **高级功能**: 目录生成、脚注尾注、列表编号、模板引擎（含模板继承）
 - **图片功能**: 图片插入、大小调整、位置设置
-- **Markdown转Word**: 基于goldmark的高质量Markdown到Word转换 ✨ **新增**
+- **Markdown转Word**: 基于goldmark的高质量Markdown到Word转换
 
 ### 🚧 规划中功能
 - 表格排序和高级操作
