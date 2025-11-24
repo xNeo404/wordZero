@@ -2570,14 +2570,22 @@ func (d *Document) RemoveParagraph(paragraph *Paragraph) bool {
 //	doc.AddParagraph("第二段")
 //	doc.RemoveParagraphAt(0)  // 删除第一段
 func (d *Document) RemoveParagraphAt(index int) bool {
-	paragraphs := d.Body.GetParagraphs()
-	if index < 0 || index >= len(paragraphs) {
-		Debugf("错误：段落索引 %d 超出范围 [0, %d)", index, len(paragraphs))
-		return false
+	// 优化：单次遍历找到目标段落及其元素索引
+	paragraphCount := 0
+	for i, element := range d.Body.Elements {
+		if _, ok := element.(*Paragraph); ok {
+			if paragraphCount == index {
+				// 找到目标段落，删除它
+				d.Body.Elements = append(d.Body.Elements[:i], d.Body.Elements[i+1:]...)
+				Debugf("删除段落: 段落索引 %d, 元素索引 %d", index, i)
+				return true
+			}
+			paragraphCount++
+		}
 	}
 	
-	targetParagraph := paragraphs[index]
-	return d.RemoveParagraph(targetParagraph)
+	Debugf("错误：段落索引 %d 超出范围 [0, %d)", index, paragraphCount)
+	return false
 }
 
 // RemoveElementAt 根据元素索引删除元素（包括段落、表格等）。

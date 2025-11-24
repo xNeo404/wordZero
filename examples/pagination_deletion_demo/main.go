@@ -76,11 +76,11 @@ func demonstrateParagraphDeletion() {
 
 	// 添加多个段落
 	doc.AddHeadingParagraph("文档编辑演示", 1)
-	para1 := doc.AddParagraph("这是第一段，将被保留。")
+	doc.AddParagraph("这是第一段，将被保留。")
 	para2 := doc.AddParagraph("这是第二段，将被删除。")
-	para3 := doc.AddParagraph("这是第三段，将被保留。")
+	doc.AddParagraph("这是第三段，将被保留。")
 	para4 := doc.AddParagraph("这是第四段，也将被删除。")
-	para5 := doc.AddParagraph("这是第五段，将被保留。")
+	doc.AddParagraph("这是第五段，将被保留。")
 
 	fmt.Println("\n  原始文档包含以下段落:")
 	fmt.Println("  1. 标题段落")
@@ -112,12 +112,6 @@ func demonstrateParagraphDeletion() {
 			}
 		}
 	}
-
-	// 避免未使用的变量警告
-	_ = para1
-	_ = para3
-	_ = para4
-	_ = para5
 
 	// 保存文档
 	filename := "examples/output/deletion_demo.docx"

@@ -767,12 +767,21 @@ func TestRemoveParagraphAt(t *testing.T) {
 		t.Errorf("删除后期望文档包含2个段落，实际包含 %d 个", len(paragraphs))
 	}
 	
-	// 验证剩余段落的内容
-	if paragraphs[0].Runs[0].Text.Content != "第一段" {
-		t.Errorf("第一个段落内容应该是'第一段'，实际是'%s'", paragraphs[0].Runs[0].Text.Content)
+	// 验证剩余段落的内容（添加边界检查）
+	if len(paragraphs) > 0 && len(paragraphs[0].Runs) > 0 {
+		if paragraphs[0].Runs[0].Text.Content != "第一段" {
+			t.Errorf("第一个段落内容应该是'第一段'，实际是'%s'", paragraphs[0].Runs[0].Text.Content)
+		}
+	} else {
+		t.Error("第一个段落应该存在且包含文本")
 	}
-	if paragraphs[1].Runs[0].Text.Content != "第三段" {
-		t.Errorf("第二个段落内容应该是'第三段'，实际是'%s'", paragraphs[1].Runs[0].Text.Content)
+	
+	if len(paragraphs) > 1 && len(paragraphs[1].Runs) > 0 {
+		if paragraphs[1].Runs[0].Text.Content != "第三段" {
+			t.Errorf("第二个段落内容应该是'第三段'，实际是'%s'", paragraphs[1].Runs[0].Text.Content)
+		}
+	} else {
+		t.Error("第二个段落应该存在且包含文本")
 	}
 	
 	// 尝试删除超出范围的索引
